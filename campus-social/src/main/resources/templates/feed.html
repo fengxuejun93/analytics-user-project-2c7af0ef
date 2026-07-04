@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>动态广场 - 校内网</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+    <nav class="top-nav">
+        <div class="nav-inner">
+            <a href="/" class="nav-logo">校内网</a>
+            <div class="nav-links">
+                <a href="/" class="active">动态广场</a>
+                <a href="/post/publish">发布动态</a>
+                <a th:href="@{'/user/' + ${currentUser.id}}">我的主页</a>
+            </div>
+            <div class="nav-user" th:if="${currentUser}">
+                <img class="nav-avatar" th:src="${currentUser.avatar}" th:alt="${currentUser.realName}">
+                <span th:text="${currentUser.realName}"></span>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="feed-layout">
+            <!-- 左侧统计栏 -->
+            <aside class="sidebar">
+                <div class="card stats-card">
+                    <div class="card-header">
+                        <a th:href="@{'/user/' + ${currentUser.id}}" class="user-brief">
+                            <img class="avatar-lg" th:src="${currentUser.avatar}" th:alt="${currentUser.realName}">
+                            <div>
+                                <h3 th:text="${currentUser.realName}"></h3>
+                                <p th:text="${currentUser.school}"></p>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-num" th:text="${friendCount}">0</span>
+                            <span class="stat-label">好友</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-num" th:text="${pendingRequestCount}">0</span>
+                            <span class="stat-label">待处理申请</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-num" th:text="${visiblePostCount}">0</span>
+                            <span class="stat-label">可见动态</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-num" th:text="${photoPostCount}">0</span>
+                            <span class="stat-label">照片动态总数</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 切换身份 -->
+                <div class="card">
+                    <div class="card-title">切换查看身份</div>
+                    <form method="post" action="/switch-user" class="switch-form">
+                        <select name="userId" class="select-input" onchange="this.form.submit()">
+                            <option th:each="u : ${allUsers}" th:value="${u.id}" th:text="${u.realName}"
+                                    th:selected="${u.id == currentUser.id}"></option>
+                        </select>
+                    </form>
+                    <p class="hint-text">切换后可体验不同身份的可见性效果</p>
+                </div>
+
+                <!-- 待处理好友申请 -->
+                <div class="card" th:if="${pendingRequestCount > 0}">
+                    <div class="card-title">待处理好友申请</div>
+                    <div th:each="req : ${pendingRequests}" class="request-item">
+                        <span th:text="${userMap.get(req.userId).realName}"></span>
+                        <div class="request-actions">
+                            <form method="post" th:action="@{'/friend/accept/' + ${req.id}}" style="display:inline">
+                                <input type="hidden" name="redirect" value="/">
+                                <button type="submit" class="btn-sm btn-primary">通过</button>
+                            </form>
+                            <form method="post" th:action="@{'/friend/reject/' + ${req.id}}" style="display:inline">
+                                <input type="hidden" name="redirect" value="/">
+                                <button type="submit" class="btn-sm btn-danger">拒绝</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- 中间动态流 -->
+            <section class="feed-main">
+                <div th:each="post : ${posts}" class="card post-card">
+                    <div class="post-header">
+                        <a th:href="@{'/user/' + ${post.userId}}" class="post-user">
+                            <img class="avatar" th:src="${userMap.get(post.userId).avatar}" th:alt="${userMap.get(post.userId).realName}">
+                            <div class="post-user-info">
+                                <span class="post-name" th:text="${userMap.get(post.userId).realName}"></span>
+                                <span class="post-school" th:text="${userMap.get(post.userId).school + ' ' + userMap.get(post.userId).className}"></span>
+                            </div>
+                        </a>
+                        <span class="visibility-tag" th:class="'visibility-tag vis-' + ${post.visibility.name()}"
+                              th:text="${post.visibility.label}"></span>
+                    </div>
+                    <a th:href="@{'/post/' + ${post.id}}" class="post-content-link">
+                        <p class="post-content" th:text="${post.content}"></p>
+                        <div class="post-image-wrap" th:if="${post.imageUrl}">
+                            <img class="post-image" th:src="${post.imageUrl}" alt="动态照片">
+                        </div>
+                    </a>
+                    <div class="post-footer">
+                        <span class="post-time" th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
+                        <div class="post-actions">
+                            <span class="action-item">
+                                <span th:text="${post.likeCount}"></span> 赞
+                            </span>
+                            <span class="action-item">
+                                <span th:text="${commentCountMap.get(post.id)}"></span> 评论
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div th:if="${posts.isEmpty()}" class="card empty-card">
+                    <p>暂无可见动态</p>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <p>校内网社交原型 - 本地模拟数据演示</p>
+    </footer>
+</body>
+</html>

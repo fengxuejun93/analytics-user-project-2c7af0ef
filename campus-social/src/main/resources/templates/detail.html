@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>动态详情 - 校内网</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+    <nav class="top-nav">
+        <div class="nav-inner">
+            <a href="/" class="nav-logo">校内网</a>
+            <div class="nav-links">
+                <a href="/">动态广场</a>
+                <a href="/post/publish">发布动态</a>
+                <a th:href="@{'/user/' + ${currentUser.id}}">我的主页</a>
+            </div>
+            <div class="nav-user" th:if="${currentUser}">
+                <img class="nav-avatar" th:src="${currentUser.avatar}" th:alt="${currentUser.realName}">
+                <span th:text="${currentUser.realName}"></span>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="detail-layout">
+            <div class="detail-main">
+                <a href="/" class="back-link">&larr; 返回动态广场</a>
+
+                <div class="card detail-card">
+                    <!-- 发布者信息 -->
+                    <div class="post-header">
+                        <a th:href="@{'/user/' + ${author.id}}" class="post-user">
+                            <img class="avatar" th:src="${author.avatar}" th:alt="${author.realName}">
+                            <div class="post-user-info">
+                                <span class="post-name" th:text="${author.realName}"></span>
+                                <span class="post-school" th:text="${author.school + ' ' + author.className}"></span>
+                            </div>
+                        </a>
+                        <span class="visibility-tag" th:class="'visibility-tag vis-' + ${post.visibility.name()}"
+                              th:text="${post.visibility.label}"></span>
+                    </div>
+
+                    <!-- 动态内容 -->
+                    <p class="post-content" th:text="${post.content}"></p>
+                    <div class="detail-image-wrap" th:if="${post.imageUrl}">
+                        <img class="detail-image" th:src="${post.imageUrl}" alt="动态大图">
+                    </div>
+
+                    <!-- 互动栏 -->
+                    <div class="detail-interactions">
+                        <span class="post-time" th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
+                        <div class="detail-actions">
+                            <form method="post" th:action="@{'/post/' + ${post.id} + '/like'}" style="display:inline">
+                                <button type="submit" class="btn-action"
+                                        th:class="${post.isLikedBy(currentUser.id)} ? 'btn-action liked' : 'btn-action'">
+                                    <span th:text="${post.likeCount}"></span> 赞
+                                </button>
+                            </form>
+                            <span class="action-item">
+                                <span th:text="${#lists.size(comments)}"></span> 评论
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 评论列表 -->
+                <div class="card comments-card">
+                    <h3 class="section-title">评论</h3>
+
+                    <div th:if="${comments.isEmpty()}" class="empty-hint">暂无评论，来说两句吧</div>
+
+                    <div th:each="comment : ${comments}" class="comment-item">
+                        <div class="comment-main">
+                            <a th:href="@{'/user/' + ${comment.userId}}" class="comment-user">
+                                <img class="avatar-sm" th:src="${userMap.get(comment.userId).avatar}" th:alt="${userMap.get(comment.userId).realName}">
+                                <span class="comment-name" th:text="${userMap.get(comment.userId).realName}"></span>
+                            </a>
+                            <span class="comment-text" th:text="${comment.content}"></span>
+                            <span class="comment-time" th:text="${#temporals.format(comment.createdAt, 'MM-dd HH:mm')}"></span>
+                        </div>
+
+                        <!-- 楼中楼回复 -->
+                        <div th:if="${!comment.replies.isEmpty()}" class="replies">
+                            <div th:each="reply : ${comment.replies}" class="reply-item">
+                                <a th:href="@{'/user/' + ${reply.userId}}" class="comment-user">
+                                    <img class="avatar-xs" th:src="${userMap.get(reply.userId).avatar}" th:alt="${userMap.get(reply.userId).realName}">
+                                    <span class="reply-name" th:text="${userMap.get(reply.userId).realName}"></span>
+                                </a>
+                                <span class="reply-text" th:text="${reply.content}"></span>
+                                <span class="comment-time" th:text="${#temporals.format(reply.createdAt, 'MM-dd HH:mm')}"></span>
+                            </div>
+                        </div>
+
+                        <!-- 回复表单 -->
+                        <div class="reply-form-wrap">
+                            <form method="post" th:action="@{'/post/comment/' + ${comment.id} + '/reply'}" class="reply-form">
+                                <input type="hidden" name="postId" th:value="${post.id}">
+                                <input type="text" name="content" placeholder="回复..." class="input-sm" required>
+                                <button type="submit" class="btn-sm btn-primary">回复</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- 发评论表单 -->
+                    <div class="comment-form-section">
+                        <h4>发表评论</h4>
+                        <form method="post" th:action="@{'/post/' + ${post.id} + '/comment'}" class="comment-form">
+                            <textarea name="content" placeholder="说点什么吧..." class="textarea-input" rows="3" required></textarea>
+                            <button type="submit" class="btn btn-primary">发表评论</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <p>校内网社交原型 - 本地模拟数据演示</p>
+    </footer>
+</body>
+</html>

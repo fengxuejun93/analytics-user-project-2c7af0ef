@@ -1,0 +1,90 @@
+package com.campus.social.service;
+
+import com.campus.social.model.*;
+import com.campus.social.repository.CommentRepository;
+import com.campus.social.repository.PhotoPostRepository;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+public class PostService {
+
+    private final PhotoPostRepository photoPostRepository;
+    private final CommentRepository commentRepository;
+    private final FriendService friendService;
+
+    public PostService(PhotoPostRepository photoPostRepository,
+                       CommentRepository commentRepository,
+                       FriendService friendService) {
+        this.photoPostRepository = photoPostRepository;
+        this.commentRepository = commentRepository;
+        this.friendService = friendService;
+    }
+
+    public PhotoPost findById(Long id) {
+        return photoPostRepository.findById(id).orElse(null);
+    }
+
+    public List<PhotoPost> getVisiblePosts(Long currentUserId) {
+        return photoPostRepository.findAllOrderByCreatedAtDesc().stream()
+                .filter(post -> isPostVisible(post, currentUserId))
+                .collect(Collectors.toList());
+    }
+
+    public boolean isPostVisible(PhotoPost post, Long currentUserId) {
+        if (post.getVisibility() == Visibility.PUBLIC) return true;
+        if (post.getVisibility() == Visibility.PRIVATE) {
+            return post.getUserId().equals(currentUserId);
+        }
+        if (post.getVisibility() == Visibility.FRIENDS_ONLY) {
+            return post.getUserId().equals(currentUserId) ||
+                    friendService.areFriends(post.getUserId(), currentUserId);
+        }
+        return false;
+    }
+
+    public int getVisiblePostCount(Long currentUserId) {
+        return (int) getVisiblePosts(currentUserId).size();
+    }
+
+    public long getPhotoPostCount() {
+        return photoPostRepository.findAll().size();
+    }
+
+    public List<PhotoPost> getPostsByUser(Long userId, Long currentUserId) {
+        return photoPostRepository.findByUserId(userId).stream()
+                .filter(post -> isPostVisible(post, currentUserId))
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .collect(Collectors.toList());
+    }
+
+    public PhotoPost createPost(Long userId, String content, String imageUrl, Visibility visibility) {
+        PhotoPost post = new PhotoPost(null, userId, content, imageUrl, visibility, 0, LocalDateTime.now());
+        return photoPostRepository.save(post);
+    }
+
+    public void toggleLike(Long postId, Long userId) {
+        photoPostRepository.findById(postId).ifPresent(post -> post.toggleLike(userId));
+    }
+
+    public List<Comment> getComments(Long postId) {
+        return commentRepository.findByPostId(postId);
+    }
+
+    public int getCommentCount(Long postId) {
+        return (int) commentRepository.countByPostId(postId);
+    }
+
+    public Comment addComment(Long postId, Long userId, String content) {
+        Comment comment = new Comment(null, postId, userId, content, LocalDateTime.now());
+        return commentRepository.saveComment(comment);
+    }
+
+    public Reply addReply(Long commentId, Long userId, String content) {
+        Reply reply = new Reply(null, commentId, userId, content, LocalDateTime.now());
+        return commentRepository.saveReply(reply);
+    }
+}

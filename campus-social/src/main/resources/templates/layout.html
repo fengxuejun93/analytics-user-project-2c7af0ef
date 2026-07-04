@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:fragment="layout(title, content)">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${title}">校内网</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+    <nav class="top-nav">
+        <div class="nav-inner">
+            <a href="/" class="nav-logo">校内网</a>
+            <div class="nav-links">
+                <a href="/">动态广场</a>
+                <a href="/post/publish">发布动态</a>
+                <a th:href="@{'/user/' + ${currentUser.id}}">我的主页</a>
+            </div>
+            <div class="nav-user" th:if="${currentUser}">
+                <img class="nav-avatar" th:src="${currentUser.avatar}" th:alt="${currentUser.realName}">
+                <span th:text="${currentUser.realName}"></span>
+            </div>
+        </div>
+    </nav>
+    <main class="container">
+        <div th:replace="${content}"></div>
+    </main>
+    <footer class="site-footer">
+        <p>校内网社交原型 - 本地模拟数据演示</p>
+    </footer>
+</body>
+</html>

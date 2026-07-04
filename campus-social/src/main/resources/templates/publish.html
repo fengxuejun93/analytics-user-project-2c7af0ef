@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>发布动态 - 校内网</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+    <nav class="top-nav">
+        <div class="nav-inner">
+            <a href="/" class="nav-logo">校内网</a>
+            <div class="nav-links">
+                <a href="/">动态广场</a>
+                <a href="/post/publish" class="active">发布动态</a>
+                <a th:href="@{'/user/' + ${currentUser.id}}">我的主页</a>
+            </div>
+            <div class="nav-user" th:if="${currentUser}">
+                <img class="nav-avatar" th:src="${currentUser.avatar}" th:alt="${currentUser.realName}">
+                <span th:text="${currentUser.realName}"></span>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="publish-layout">
+            <div class="publish-main">
+                <a href="/" class="back-link">&larr; 返回动态广场</a>
+                <div class="card publish-card">
+                    <h2 class="section-title">发布照片动态</h2>
+                    <form method="post" action="/post/publish" class="publish-form">
+                        <div class="form-group">
+                            <label>文字内容</label>
+                            <textarea name="content" placeholder="分享你的想法..." class="textarea-input" rows="4" required></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label>选择预置图片</label>
+                            <div class="image-picker">
+                                <div th:each="img : ${presetImages}" class="image-option">
+                                    <input type="radio" name="imageUrl" th:value="${img}" th:id="'img-' + ${imgStat.index}"
+                                           th:checked="${imgStat.index == 0}">
+                                    <label th:for="'img-' + ${imgStat.index}" class="image-label">
+                                        <img th:src="${img}" alt="预置图片" class="preview-img">
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>可见性</label>
+                            <div class="visibility-options">
+                                <div th:each="vis : ${visibilities}" class="visibility-option">
+                                    <input type="radio" name="visibility" th:value="${vis.name()}"
+                                           th:id="'vis-' + ${vis.name()}" th:checked="${visStat.index == 0}">
+                                    <label th:for="'vis-' + ${vis.name()}" class="vis-label">
+                                        <span class="vis-icon" th:class="'vis-icon vis-icon-' + ${vis.name()}"></span>
+                                        <span th:text="${vis.label}"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-lg">发布动态</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <p>校内网社交原型 - 本地模拟数据演示</p>
+    </footer>
+</body>
+</html>

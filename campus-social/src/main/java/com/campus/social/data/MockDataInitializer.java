@@ -75,6 +75,9 @@ public class MockDataInitializer implements CommandLineRunner {
         // 张伟 和 赵阳 互为好友
         friendRelationRepository.save(new FriendRelation(8L, 3L, 6L, FriendStatus.ACCEPTED,
                 LocalDateTime.of(2024, 2, 14, 10, 0)));
+        // 赵阳 曾向 李明 发过好友申请被拒绝（测试反向申请翻转）
+        friendRelationRepository.save(new FriendRelation(9L, 6L, 1L, FriendStatus.REJECTED,
+                LocalDateTime.of(2024, 6, 20, 19, 30)));
     }
 
     private void initPosts() {

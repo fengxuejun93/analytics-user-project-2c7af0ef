@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>编辑动态 - 校内网</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+    <nav class="top-nav">
+        <div class="nav-inner">
+            <a href="/" class="nav-logo">校内网</a>
+            <div class="nav-links">
+                <a href="/">动态广场</a>
+                <a href="/post/publish">发布动态</a>
+                <a th:href="@{'/user/' + ${currentUser.id}}">我的主页</a>
+            </div>
+            <div class="nav-user" th:if="${currentUser}">
+                <img class="nav-avatar" th:src="${currentUser.avatar}" th:alt="${currentUser.realName}">
+                <span th:text="${currentUser.realName}"></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Toast 通知 -->
+    <div th:if="${toastMsg != null and !toastMsg.isEmpty()}" class="toast"
+         th:class="${toastType == 'success'} ? 'toast toast-success show' : 'toast toast-error show'">
+        <span th:text="${toastMsg}"></span>
+    </div>
+
+    <main class="container">
+        <div class="publish-layout">
+            <div class="publish-main">
+                <a th:href="@{'/post/' + ${post.id}}" class="back-link">&larr; 返回动态详情</a>
+                <div class="card publish-card">
+                    <h2 class="section-title">编辑照片动态</h2>
+                    <form id="editForm" method="post" th:action="@{'/post/' + ${post.id} + '/edit'}" class="publish-form"
+                          onsubmit="return validateForm()">
+                        <input type="hidden" name="redirect" id="redirectInput" value="">
+
+                        <div class="form-group">
+                            <label>文字内容 <span class="char-hint">(最多500字)</span></label>
+                            <textarea name="content" id="editContent" class="textarea-input" rows="4" maxlength="500"
+                                      oninput="updateCharCount()"
+                                      th:text="${post.content}"></textarea>
+                            <div class="char-counter"><span id="charCount" th:text="${#strings.length(post.content)}">0</span>/500</div>
+                            <div id="contentError" class="field-error"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>选择预置图片</label>
+                            <div class="image-picker">
+                                <div th:each="img : ${presetImages}" class="image-option">
+                                    <input type="radio" name="imageUrl" th:value="${img}" th:id="'img-' + ${imgStat.index}"
+                                           th:checked="${img == post.imageUrl}">
+                                    <label th:for="'img-' + ${imgStat.index}" class="image-label">
+                                        <img th:src="${img}" alt="预置图片" class="preview-img">
+                                    </label>
+                                </div>
+                            </div>
+                            <div id="imageError" class="field-error"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>可见性</label>
+                            <div class="visibility-options">
+                                <div th:each="vis : ${visibilities}" class="visibility-option">
+                                    <input type="radio" name="visibility" th:value="${vis.name()}"
+                                           th:id="'vis-' + ${vis.name()}" th:checked="${vis == post.visibility}">
+                                    <label th:for="'vis-' + ${vis.name()}" class="vis-label">
+                                        <span class="vis-icon" th:class="'vis-icon vis-icon-' + ${vis.name()}"></span>
+                                        <span th:text="${vis.label}"></span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div id="visibilityError" class="field-error"></div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-lg">保存修改</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <p>校内网社交原型 - 本地模拟数据演示</p>
+    </footer>
+
+    <script>
+        // 记录来源页
+        var referrer = document.referrer;
+        if (referrer) {
+            document.getElementById('redirectInput').value = referrer;
+        }
+
+        function updateCharCount() {
+            var len = document.getElementById('editContent').value.length;
+            document.getElementById('charCount').textContent = len;
+        }
+
+        function clearErrors() {
+            document.getElementById('contentError').textContent = '';
+            document.getElementById('imageError').textContent = '';
+            document.getElementById('visibilityError').textContent = '';
+        }
+
+        function validateForm() {
+            clearErrors();
+            var valid = true;
+            var content = document.getElementById('editContent').value.trim();
+            if (!content) {
+                document.getElementById('contentError').textContent = '内容不能为空';
+                valid = false;
+            } else if (content.length > 500) {
+                document.getElementById('contentError').textContent = '内容不能超过500字';
+                valid = false;
+            }
+            var imageChecked = document.querySelector('input[name="imageUrl"]:checked');
+            if (!imageChecked) {
+                document.getElementById('imageError').textContent = '请选择一张图片';
+                valid = false;
+            }
+            var visChecked = document.querySelector('input[name="visibility"]:checked');
+            if (!visChecked) {
+                document.getElementById('visibilityError').textContent = '请选择可见性';
+                valid = false;
+            }
+            return valid;
+        }
+
+        // Toast 自动消失
+        setTimeout(function() {
+            var toast = document.querySelector('.toast.show');
+            if (toast) toast.classList.remove('show');
+        }, 3000);
+    </script>
+</body>
+</html>

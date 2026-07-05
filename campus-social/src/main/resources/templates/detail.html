@@ -82,12 +82,12 @@
                                     </button>
                                 </form>
                                 <span class="action-item">
-                                    <span th:text="${#lists.size(comments)}"></span> 评论
+                                    <span th:text="${commentCount}"></span> 评论
                                 </span>
                             </div>
                             <!-- 主人操作 -->
                             <div th:if="${isOwner}" class="owner-actions">
-                                <button type="button" class="btn-action" onclick="showEditMode()">编辑</button>
+                                <a th:href="@{'/post/' + ${post.id} + '/edit'}" class="btn-action">编辑</a>
                                 <form method="post" th:action="@{'/post/' + ${post.id} + '/pin'}" style="display:inline">
                                     <button type="submit" class="btn-action"
                                             th:text="${post.pinned} ? '取消置顶' : '置顶'"></button>
@@ -95,40 +95,6 @@
                                 <button type="button" class="btn-action btn-action-danger" onclick="showDeleteModal()">删除</button>
                             </div>
                         </div>
-                    </div>
-                </div>
-
-                <!-- ====== 编辑模式 ====== -->
-                <div id="editMode" style="display:none">
-                    <div class="card detail-card">
-                        <h3 class="section-title">编辑动态</h3>
-                        <form method="post" th:action="@{'/post/' + ${post.id} + '/edit'}" class="edit-form">
-                            <div class="form-group">
-                                <label>文字内容 <span class="char-hint">(最多500字)</span></label>
-                                <textarea name="content" class="textarea-input" rows="4" maxlength="500" required
-                                          th:text="${post.content}"
-                                          oninput="document.getElementById('charCount').textContent=this.value.length"></textarea>
-                                <div class="char-counter"><span id="charCount" th:text="${#strings.length(post.content)}">0</span>/500</div>
-                            </div>
-                            <div class="form-group">
-                                <label>可见性</label>
-                                <div class="visibility-options">
-                                    <div th:each="vis : ${visibilities}" class="visibility-option">
-                                        <input type="radio" name="visibility" th:value="${vis.name()}"
-                                               th:id="'edit-vis-' + ${vis.name()}"
-                                               th:checked="${vis == post.visibility}">
-                                        <label th:for="'edit-vis-' + ${vis.name()}" class="vis-label">
-                                            <span class="vis-icon" th:class="'vis-icon vis-icon-' + ${vis.name()}"></span>
-                                            <span th:text="${vis.label}"></span>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="edit-actions">
-                                <button type="submit" class="btn btn-primary">保存修改</button>
-                                <button type="button" class="btn" onclick="showViewMode()">取消</button>
-                            </div>
-                        </form>
                     </div>
                 </div>
 
@@ -148,7 +114,7 @@
 
                 <!-- ====== 评论列表 ====== -->
                 <div class="card comments-card">
-                    <h3 class="section-title">评论 (<span th:text="${#lists.size(comments)}"></span>)</h3>
+                    <h3 class="section-title">评论 (<span th:text="${commentCount}"></span>)</h3>
 
                     <div th:if="${comments.isEmpty()}" class="empty-hint">
                         <div class="empty-icon">&#128172;</div>
@@ -210,14 +176,6 @@
     </footer>
 
     <script>
-        function showEditMode() {
-            document.getElementById('viewMode').style.display = 'none';
-            document.getElementById('editMode').style.display = 'block';
-        }
-        function showViewMode() {
-            document.getElementById('viewMode').style.display = 'block';
-            document.getElementById('editMode').style.display = 'none';
-        }
         function showDeleteModal() {
             document.getElementById('deleteModal').style.display = 'flex';
         }

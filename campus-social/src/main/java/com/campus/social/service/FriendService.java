@@ -55,8 +55,10 @@ public class FriendService {
         if (fromUserId.equals(toUserId)) return;
         var existing = friendRelationRepository.findBetweenUsers(fromUserId, toUserId);
         if (existing.isPresent()) {
-            // 被拒绝后可重新申请：把 REJECTED 改回 PENDING
+            // 被拒绝后可重新申请：把 REJECTED 改回 PENDING，并翻转发起人/接收人
             if (existing.get().getStatus() == FriendStatus.REJECTED) {
+                existing.get().setUserId(fromUserId);
+                existing.get().setFriendId(toUserId);
                 existing.get().setStatus(FriendStatus.PENDING);
                 existing.get().setCreatedAt(java.time.LocalDateTime.now());
                 friendRelationRepository.save(existing.get());

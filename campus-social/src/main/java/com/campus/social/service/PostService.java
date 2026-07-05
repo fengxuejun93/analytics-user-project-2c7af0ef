@@ -88,12 +88,15 @@ public class PostService {
         return commentRepository.saveReply(reply);
     }
 
-    public boolean updatePost(Long postId, Long currentUserId, String content, Visibility visibility) {
+    public boolean updatePost(Long postId, Long currentUserId, String content, String imageUrl, Visibility visibility) {
         PhotoPost post = findById(postId);
         if (post == null || !post.getUserId().equals(currentUserId)) return false;
         if (content == null || content.trim().isEmpty()) return false;
         if (content.length() > 500) return false;
+        if (imageUrl == null || imageUrl.trim().isEmpty()) return false;
+        if (visibility == null) return false;
         post.setContent(content.trim());
+        post.setImageUrl(imageUrl.trim());
         post.setVisibility(visibility);
         post.setEdited(true);
         post.setLastEditedAt(LocalDateTime.now());

@@ -694,6 +694,22 @@ a:hover { text-decoration: underline; }
 }
 
 /* ===== Python 增强视图入口 ===== */
+
+/* ===== 表单校验错误 ===== */
+.field-error {
+    color: var(--red);
+    font-size: 12px;
+    margin-top: 4px;
+    min-height: 16px;
+}
+
+/* ===== 编辑小按钮（个人主页卡片） ===== */
+.btn-edit-sm {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-right: 4px;
+}
 .py-link {
     display: inline-block;
     margin-left: 12px;

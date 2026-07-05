@@ -129,8 +129,11 @@
                                 <span class="post-school" th:text="${userMap.get(post.userId).school + ' ' + userMap.get(post.userId).className}"></span>
                             </div>
                         </a>
-                        <span class="visibility-tag" th:class="'visibility-tag vis-' + ${post.visibility.name()}"
-                              th:text="${post.visibility.label}"></span>
+                        <div class="post-meta-tags">
+                            <a th:if="${post.userId == currentUser.id}" th:href="@{'/post/' + ${post.id} + '/edit'}" class="btn-action btn-edit-sm">编辑</a>
+                            <span class="visibility-tag" th:class="'visibility-tag vis-' + ${post.visibility.name()}"
+                                  th:text="${post.visibility.label}"></span>
+                        </div>
                     </div>
                     <a th:href="@{'/post/' + ${post.id}}" class="post-content-link">
                         <p class="post-content" th:text="${post.content}"></p>
@@ -140,6 +143,7 @@
                     </a>
                     <div class="post-footer">
                         <span class="post-time" th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
+                        <span th:if="${post.edited}" class="edited-hint-sm">已编辑</span>
                         <div class="post-actions">
                             <span class="action-item"><span th:text="${post.likeCount}"></span> 赞</span>
                             <span class="action-item"><span th:text="${bookmarkCountMap.get(post.id)}"></span> 收藏</span>

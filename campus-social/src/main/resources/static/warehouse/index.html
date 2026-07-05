@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>仓储管理 - 校内网</title>
+    <link rel="stylesheet" href="css/warehouse.css">
+</head>
+<body>
+<div id="app">
+    <!-- 导航 -->
+    <nav class="w-nav">
+        <a href="/" class="w-nav-logo">校内网</a>
+        <div class="w-nav-tabs">
+            <a href="#" :class="{ active: view==='dashboard' }" @click.prevent="switchView('dashboard')">看板</a>
+            <a href="#" :class="{ active: view==='inbound' }" @click.prevent="switchView('inbound')">入库预约</a>
+            <a href="#" :class="{ active: view==='locations' }" @click.prevent="switchView('locations')">库位占用</a>
+            <a href="#" :class="{ active: view==='batches' }" @click.prevent="switchView('batches')">批次库存</a>
+            <a href="#" :class="{ active: view==='counts' }" @click.prevent="switchView('counts')">盘点差异</a>
+            <a href="#" :class="{ active: view==='waves' }" @click.prevent="switchView('waves')">波次拣货</a>
+            <a href="#" :class="{ active: view==='outbound' }" @click.prevent="switchView('outbound')">出库复核</a>
+            <a href="#" :class="{ active: view==='wms-alerts' }" @click.prevent="switchView('wms-alerts')">异常预警</a>
+        </div>
+        <a href="/" class="w-nav-back">&larr; 返回首页</a>
+    </nav>
+
+    <!-- Toast -->
+    <div class="w-toast" :class="[toast.show?'show':'', toast.type==='error'?'w-toast-error':'w-toast-success']">{{ toast.msg }}</div>
+
+    <div class="w-container">
+
+        <!-- ====== 确认面板（页面内确认层） ====== -->
+        <div v-if="confirmPanel.show" class="w-confirm-panel">
+            <h4>{{ confirmPanel.title }}</h4>
+            <div v-for="r in confirmPanel.rows" :key="r.label" class="w-confirm-row">
+                <span style="color:var(--w-text2)">{{ r.label }}</span>
+                <span style="font-weight:600">{{ r.value }}</span>
+            </div>
+            <div class="w-confirm-actions">
+                <button class="w-btn" @click="cancelConfirm">取消</button>
+                <button class="w-btn w-btn-primary" @click="doConfirm">确认</button>
+            </div>
+        </div>
+
+        <!-- ====== 弹窗表单 ====== -->
+        <div v-if="modal.show" class="w-modal-mask" @click.self="cancelModal">
+            <div class="w-modal">
+                <h3>{{ modal.title }}</h3>
+                <template v-for="f in modal.fields" :key="f.key">
+                    <label>{{ f.label }}{{ f.required ? ' *' : '' }}</label>
+                    <input v-if="f.type==='number'" type="number" v-model="modal.data[f.key]" :placeholder="f.label">
+                    <input v-else v-model="modal.data[f.key]" :placeholder="f.label">
+                    <div v-if="modal.errors[f.key]" class="w-error">{{ modal.errors[f.key] }}</div>
+                </template>
+                <div class="w-modal-actions">
+                    <button class="w-btn" @click="cancelModal">取消</button>
+                    <button class="w-btn w-btn-primary" @click="submitModal">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== 看板 ====== -->
+        <div v-if="view==='dashboard'">
+            <h2 class="w-section-title">仓储过程看板</h2>
+            <div class="w-stat-grid">
+                <div class="w-stat-box"><span class="w-stat-val">{{ dash.totalInbound || 0 }}</span><span class="w-stat-lbl">入库单</span></div>
+                <div class="w-stat-box s-green"><span class="w-stat-val">{{ dash.totalBatches || 0 }}</span><span class="w-stat-lbl">批次</span></div>
+                <div class="w-stat-box"><span class="w-stat-val">{{ dash.totalBatchQty || 0 }}</span><span class="w-stat-lbl">库存总量</span></div>
+                <div class="w-stat-box"><span class="w-stat-val">{{ dash.totalLocations || 0 }}</span><span class="w-stat-lbl">库位</span></div>
+                <div class="w-stat-box s-orange"><span class="w-stat-val">{{ dash.totalCounts || 0 }}</span><span class="w-stat-lbl">盘点单</span></div>
+                <div class="w-stat-box"><span class="w-stat-val">{{ dash.totalWaves || 0 }}</span><span class="w-stat-lbl">拣货波次</span></div>
+                <div class="w-stat-box"><span class="w-stat-val">{{ dash.totalOutbound || 0 }}</span><span class="w-stat-lbl">出库单</span></div>
+                <div class="w-stat-box s-red"><span class="w-stat-val">{{ dash.totalAlerts || 0 }}</span><span class="w-stat-lbl">异常预警</span></div>
+            </div>
+            <div style="margin-top:16px;display:flex;gap:16px;flex-wrap:wrap">
+                <div class="w-card" style="flex:1;min-width:200px">
+                    <div style="font-size:13px;font-weight:600;color:var(--w-text2);margin-bottom:8px">入库状态分布</div>
+                    <div v-for="(v,k) in dash.inboundByStatus" :key="k" class="w-detail-row">
+                        <span class="w-detail-label">{{ k }}</span><span class="w-detail-value">{{ v }} 单</span>
+                    </div>
+                </div>
+                <div class="w-card" style="flex:1;min-width:200px">
+                    <div style="font-size:13px;font-weight:600;color:var(--w-text2);margin-bottom:8px">库位占用</div>
+                    <div v-for="(v,k) in dash.locByStatus" :key="k" class="w-detail-row">
+                        <span class="w-detail-label">{{ k }}</span><span class="w-detail-value">{{ v }} 个</span>
+                    </div>
+                </div>
+                <div class="w-card" style="flex:1;min-width:200px">
+                    <div style="font-size:13px;font-weight:600;color:var(--w-text2);margin-bottom:8px">预警状态</div>
+                    <div v-for="(v,k) in dash.alertByStatus" :key="k" class="w-detail-row">
+                        <span class="w-detail-label">{{ k }}</span><span class="w-detail-value">{{ v }} 条</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== 入库预约 ====== -->
+        <div v-if="view==='inbound'">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <h2 class="w-section-title" style="margin:0">入库预约</h2>
+                <button class="w-btn w-btn-primary" @click="openCreateInbound">新建入库</button>
+            </div>
+            <div v-if="inbound.length===0" class="w-card w-empty"><div class="w-empty-icon">&#128230;</div>暂无入库单</div>
+            <div class="w-card" v-for="o in inbound" :key="o.id" style="margin-bottom:10px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                    <div>
+                        <span :class="bclass(o.status)">{{ o.status }}</span>
+                        <span style="color:var(--w-text2);font-size:12px;margin-left:6px">#{{ o.id }}</span>
+                    </div>
+                    <div style="display:flex;gap:6px">
+                        <button v-if="o.status==='PENDING'" class="w-btn w-btn-primary w-btn-sm" @click="doCheckInbound(o)">质检</button>
+                        <button v-if="o.status==='CHECKED'" class="w-btn w-btn-success w-btn-sm" @click="doShelfInbound(o)">上架</button>
+                    </div>
+                </div>
+                <div class="w-detail-row"><span class="w-detail-label">SKU</span><span class="w-detail-value">{{ o.sku }}</span></div>
+                <div class="w-detail-row"><span class="w-detail-label">数量</span><span class="w-detail-value">{{ o.qty }}</span></div>
+                <div class="w-detail-row"><span class="w-detail-label">供应商</span><span class="w-detail-value">{{ o.supplier }}</span></div>
+                <div v-if="o.batchNo" class="w-detail-row"><span class="w-detail-label">批次号</span><span class="w-detail-value">{{ o.batchNo }}</span></div>
+                <div v-if="o.locationId" class="w-detail-row"><span class="w-detail-label">库位ID</span><span class="w-detail-value">{{ o.locationId }}</span></div>
+                <div class="w-detail-row"><span class="w-detail-label">创建</span><span class="w-detail-value">{{ ft(o.createdAt) }}</span></div>
+            </div>
+        </div>
+
+        <!-- ====== 库位占用 ====== -->
+        <div v-if="view==='locations'">
+            <h2 class="w-section-title">库位占用</h2>
+            <div class="w-card">
+                <table class="w-table">
+                    <thead><tr><th>ID</th><th>编码</th><th>区域</th><th>容量</th><th>已用</th><th>占用率</th><th>状态</th></tr></thead>
+                    <tbody>
+                        <tr v-for="l in locations" :key="l.id">
+                            <td>{{ l.id }}</td>
+                            <td>{{ l.code }}</td>
+                            <td>{{ l.zone }}</td>
+                            <td>{{ l.capacity }}</td>
+                            <td>{{ l.used }}</td>
+                            <td>{{ l.capacity > 0 ? Math.round(l.used/l.capacity*100) : 0 }}%</td>
+                            <td><span :class="bclass(l.status)">{{ l.status }}</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ====== 批次库存 ====== -->
+        <div v-if="view==='batches'">
+            <h2 class="w-section-title">批次库存</h2>
+            <div class="w-card">
+                <table class="w-table">
+                    <thead><tr><th>批次号</th><th>SKU</th><th>库位</th><th>数量</th><th>入库时间</th></tr></thead>
+                    <tbody>
+                        <tr v-for="b in batches" :key="b.id">
+                            <td>{{ b.batchNo }}</td>
+                            <td>{{ b.sku }}</td>
+                            <td>{{ b.locationId }}</td>
+                            <td>{{ b.qty }}</td>
+                            <td>{{ ft(b.inboundAt) }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ====== 盘点差异 ====== -->
+        <div v-if="view==='counts'">
+            <h2 class="w-section-title">盘点差异</h2>
+            <div v-if="counts.length===0" class="w-card w-empty"><div class="w-empty-icon">&#128203;</div>暂无盘点单</div>
+            <div class="w-card" v-for="c in counts" :key="c.id" style="margin-bottom:10px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                    <div>
+                        <span :class="bclass(c.status)">{{ c.status }}</span>
+                        <span style="color:var(--w-text2);font-size:12px;margin-left:6px">#{{ c.id }}</span>
+                    </div>
+                    <button v-if="c.status==='PLANNED'||c.status==='COUNTING'" class="w-btn w-btn-primary w-btn-sm" @click="doExecuteCount(c)">执行盘点</button>
+                </div>
+                <div class="w-detail-row"><span class="w-detail-label">库位ID</span><span class="w-detail-value">{{ c.locationId }}</span></div>
+                <div class="w-detail-row"><span class="w-detail-label">系统数量</span><span class="w-detail-value">{{ c.systemQty }}</span></div>
+                <div v-if="c.realQty!=null" class="w-detail-row"><span class="w-detail-label">实际数量</span><span class="w-detail-value">{{ c.realQty }}</span></div>
+                <div v-if="c.diff!=null" class="w-detail-row"><span class="w-detail-label">差异</span><span class="w-detail-value" :style="{color: c.diff!==0?'var(--w-red)':'var(--w-green)'}">{{ c.diff }}</span></div>
+                <div v-if="c.note" class="w-detail-row"><span class="w-detail-label">备注</span><span class="w-detail-value">{{ c.note }}</span></div>
+            </div>
+        </div>
+
+        <!-- ====== 波次拣货 ====== -->
+        <div v-if="view==='waves'">
+            <h2 class="w-section-title">波次拣货</h2>
+            <div v-if="waves.length===0" class="w-card w-empty"><div class="w-empty-icon">&#128666;</div>暂无波次</div>
+            <div class="w-card" v-for="w in waves" :key="w.id" style="margin-bottom:10px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                    <div>
+                        <span :class="bclass(w.status)">{{ w.status }}</span>
+                        <span style="font-weight:600;margin-left:6px">{{ w.waveNo }}</span>
+                    </div>
+                    <div style="display:flex;gap:6px">
+                        <button v-if="w.status==='CREATED'" class="w-btn w-btn-primary w-btn-sm" @click="doStartPicking(w)">开始拣货</button>
+                        <button v-if="w.status==='PICKING'" class="w-btn w-btn-success w-btn-sm" @click="doCompletePicking(w)">完成拣货</button>
+                    </div>
+                </div>
+                <div class="w-detail-row"><span class="w-detail-label">出库单</span><span class="w-detail-value">{{ w.orderIds?.join(', ') || '-' }}</span></div>
+                <div class="w-detail-row"><span class="w-detail-label">创建</span><span class="w-detail-value">{{ ft(w.createdAt) }}</span></div>
+            </div>
+        </div>
+
+        <!-- ====== 出库复核 ====== -->
+        <div v-if="view==='outbound'">
+            <h2 class="w-section-title">出库复核</h2>
+            <div v-if="outbound.length===0" class="w-card w-empty"><div class="w-empty-icon">&#128666;</div>暂无出库单</div>
+            <div class="w-card" v-for="o in outbound" :key="o.id" style="margin-bottom:10px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                    <div>
+                        <span :class="bclass(o.status)">{{ o.status }}</span>
+                        <span style="font-weight:600;margin-left:6px">{{ o.orderNo }}</span>
+                    </div>
+                    <div style="display:flex;gap:6px">
+                        <button v-if="o.status==='PENDING'" class="w-btn w-btn-primary w-btn-sm" @click="doReviewOutbound(o)">复核</button>
+                        <button v-if="o.status==='REVIEWING'" class="w-btn w-btn-success w-btn-sm" @click="doCompleteOutbound(o)">完成出库</button>
+                    </div>
+                </div>
+                <div class="w-detail-row"><span class="w-detail-label">SKU</span><span class="w-detail-value">{{ o.sku }}</span></div>
+                <div class="w-detail-row"><span class="w-detail-label">数量</span><span class="w-detail-value">{{ o.qty }}</span></div>
+                <div v-if="o.waveId" class="w-detail-row"><span class="w-detail-label">波次ID</span><span class="w-detail-value">{{ o.waveId }}</span></div>
+            </div>
+        </div>
+
+        <!-- ====== 异常预警 ====== -->
+        <div v-if="view==='wms-alerts'">
+            <h2 class="w-section-title">异常预警</h2>
+            <div v-if="alerts.length===0" class="w-card w-empty"><div class="w-empty-icon">&#9888;</div>暂无预警</div>
+            <div class="w-card" v-for="a in alerts" :key="a.id" style="margin-bottom:10px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                    <div>
+                        <span :class="bclass(a.status)">{{ a.status }}</span>
+                        <span style="color:var(--w-text2);font-size:12px;margin-left:4px">{{ a.type }}</span>
+                    </div>
+                    <div style="display:flex;gap:6px">
+                        <button v-if="a.status==='ACTIVE'" class="w-btn w-btn-primary w-btn-sm" @click="doAckAlert(a)">确认</button>
+                        <button v-if="a.status!=='RESOLVED'" class="w-btn w-btn-success w-btn-sm" @click="doResolveAlert(a)">关闭</button>
+                    </div>
+                </div>
+                <div style="font-weight:500;margin-bottom:6px">{{ a.content }}</div>
+                <div v-if="a.note" class="w-detail-row"><span class="w-detail-label">处理</span><span class="w-detail-value">{{ a.note }}</span></div>
+                <div class="w-detail-row"><span class="w-detail-label">创建</span><span class="w-detail-value">{{ ft(a.createdAt) }}</span></div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

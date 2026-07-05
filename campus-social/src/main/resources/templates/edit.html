@@ -15,6 +15,7 @@
                 <a href="/post/publish">发布动态</a>
                 <a th:href="@{'/user/' + ${currentUser.id}}">我的主页</a>
                 <a href="/monitor/index.html">管理中心</a>
+                <a href="/warehouse/index.html">仓储管理</a>
             </div>
             <div class="nav-user" th:if="${currentUser}">
                 <img class="nav-avatar" th:src="${currentUser.avatar}" th:alt="${currentUser.realName}">

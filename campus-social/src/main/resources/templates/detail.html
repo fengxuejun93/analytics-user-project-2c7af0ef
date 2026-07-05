@@ -32,7 +32,6 @@
         <div class="detail-layout">
             <div class="detail-main">
                 <a href="/" class="back-link">&larr; 返回动态广场</a>
-                <a th:href="@{'http://localhost:5000/post/' + ${post.id}}" class="py-link" target="_blank">Python增强视图 &#8599;</a>
 
                 <!-- ====== 查看模式 ====== -->
                 <div id="viewMode">
@@ -74,6 +73,12 @@
                                     <button type="submit" class="btn-action"
                                             th:class="${post.isLikedBy(currentUser.id)} ? 'btn-action liked' : 'btn-action'">
                                         <span th:text="${post.likeCount}"></span> 赞
+                                    </button>
+                                </form>
+                                <form method="post" th:action="@{'/post/' + ${post.id} + '/bookmark'}" style="display:inline">
+                                    <button type="submit" class="btn-action"
+                                            th:class="${post.isBookmarkedBy(currentUser.id)} ? 'btn-action bookmarked' : 'btn-action'">
+                                        <span th:text="${post.bookmarkCount}"></span> 收藏
                                     </button>
                                 </form>
                                 <span class="action-item">

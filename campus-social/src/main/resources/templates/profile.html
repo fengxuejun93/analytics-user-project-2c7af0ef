@@ -22,6 +22,12 @@
         </div>
     </nav>
 
+    <!-- Toast 通知 -->
+    <div th:if="${toastMsg != null and !toastMsg.isEmpty()}" class="toast"
+         th:class="${toastType == 'success'} ? 'toast toast-success show' : 'toast toast-error show'">
+        <span th:text="${toastMsg}"></span>
+    </div>
+
     <main class="container">
         <div class="profile-layout">
             <!-- 左侧个人资料 -->
@@ -39,26 +45,40 @@
                         <p th:if="${profileUser.bio}"><span class="label">签名：</span><span th:text="${profileUser.bio}"></span></p>
                     </div>
 
-                    <!-- 好友操作按钮 -->
+                    <!-- 好友状态按钮 — 五态流转 -->
                     <div class="friend-action-area" th:if="${friendStatus != 'self'}">
-                        <div th:switch="${friendStatus}">
-                            <span th:case="'friend'" class="friend-badge">已是好友</span>
-                            <form th:case="'none'" method="post" th:action="@{'/friend/request/' + ${profileUser.id}}">
+                        <!-- 已是好友 -->
+                        <div th:if="${friendStatus == 'friend'}">
+                            <span class="friend-badge">已是好友</span>
+                        </div>
+                        <!-- 未好友：可以申请 -->
+                        <div th:if="${friendStatus == 'none'}">
+                            <form method="post" th:action="@{'/friend/request/' + ${profileUser.id}}">
                                 <button type="submit" class="btn btn-primary btn-block">加为好友</button>
                             </form>
-                            <span th:case="'sent'" class="pending-badge">已发送申请，等待对方通过</span>
-                            <div th:case="'received'" class="received-actions">
-                                <p class="pending-badge">对方已发来好友申请</p>
-                                <form method="post" th:action="@{'/friend/accept/' + ${relation.id}}" style="display:inline">
-                                    <input type="hidden" name="redirect" th:value="'/user/' + ${profileUser.id}">
-                                    <button type="submit" class="btn btn-primary">通过</button>
-                                </form>
-                                <form method="post" th:action="@{'/friend/reject/' + ${relation.id}}" style="display:inline">
-                                    <input type="hidden" name="redirect" th:value="'/user/' + ${profileUser.id}">
-                                    <button type="submit" class="btn btn-danger">拒绝</button>
-                                </form>
-                            </div>
-                            <span th:case="'rejected'" class="rejected-badge">申请已被拒绝</span>
+                        </div>
+                        <!-- 已发送申请 -->
+                        <div th:if="${friendStatus == 'sent'}">
+                            <span class="pending-badge">已发送申请，等待对方通过</span>
+                        </div>
+                        <!-- 对方发来申请：可以通过/拒绝 -->
+                        <div th:if="${friendStatus == 'received'}">
+                            <p class="pending-badge">对方已发来好友申请</p>
+                            <form method="post" th:action="@{'/friend/accept/' + ${relation.id}}" style="display:inline">
+                                <input type="hidden" name="redirect" th:value="'/user/' + ${profileUser.id}">
+                                <button type="submit" class="btn btn-primary">通过</button>
+                            </form>
+                            <form method="post" th:action="@{'/friend/reject/' + ${relation.id}}" style="display:inline">
+                                <input type="hidden" name="redirect" th:value="'/user/' + ${profileUser.id}">
+                                <button type="submit" class="btn btn-danger">拒绝</button>
+                            </form>
+                        </div>
+                        <!-- 被拒绝：可重新申请 -->
+                        <div th:if="${friendStatus == 'rejected'}">
+                            <span class="rejected-badge">之前的申请已被拒绝</span>
+                            <form method="post" th:action="@{'/friend/request/' + ${profileUser.id}}" style="margin-top:8px">
+                                <button type="submit" class="btn btn-primary btn-block">重新申请</button>
+                            </form>
                         </div>
                     </div>
                 </div>
@@ -122,13 +142,15 @@
                         <span class="post-time" th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
                         <div class="post-actions">
                             <span class="action-item"><span th:text="${post.likeCount}"></span> 赞</span>
+                            <span class="action-item"><span th:text="${bookmarkCountMap.get(post.id)}"></span> 收藏</span>
                             <span class="action-item"><span th:text="${commentCountMap.get(post.id)}"></span> 评论</span>
                         </div>
                     </div>
                 </div>
 
                 <div th:if="${userPosts.isEmpty()}" class="card empty-card">
-                    <p>暂无可见动态</p>
+                    <div class="empty-icon">&#128247;</div>
+                    <p>该用户暂无对您可见的动态</p>
                 </div>
             </section>
         </div>
@@ -137,5 +159,12 @@
     <footer class="site-footer">
         <p>校内网社交原型 - 本地模拟数据演示</p>
     </footer>
+
+    <script>
+        setTimeout(function() {
+            var toast = document.querySelector('.toast.show');
+            if (toast) toast.classList.remove('show');
+        }, 3000);
+    </script>
 </body>
 </html>

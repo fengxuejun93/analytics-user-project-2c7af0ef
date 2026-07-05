@@ -53,8 +53,14 @@ public class HomeController {
         }
 
         Map<Long, Integer> commentCountMap = new HashMap<>();
+        Map<Long, Integer> bookmarkCountMap = new HashMap<>();
         for (PhotoPost post : posts) {
             commentCountMap.put(post.getId(), postService.getCommentCount(post.getId()));
+            bookmarkCountMap.put(post.getId(), post.getBookmarkCount());
+        }
+        for (PhotoPost post : pinnedPosts) {
+            commentCountMap.put(post.getId(), postService.getCommentCount(post.getId()));
+            bookmarkCountMap.put(post.getId(), post.getBookmarkCount());
         }
 
         model.addAttribute("currentUser", currentUser);
@@ -62,6 +68,7 @@ public class HomeController {
         model.addAttribute("pinnedPosts", pinnedPosts);
         model.addAttribute("userMap", userMap);
         model.addAttribute("commentCountMap", commentCountMap);
+        model.addAttribute("bookmarkCountMap", bookmarkCountMap);
         model.addAttribute("allUsers", allUsers);
         model.addAttribute("friendCount", friendService.getFriendCount(currentUserId));
         model.addAttribute("pendingRequestCount", friendService.getPendingRequestCount(currentUserId));

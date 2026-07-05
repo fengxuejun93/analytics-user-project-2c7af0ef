@@ -75,7 +75,7 @@ public class PostService {
     }
 
     public int getCommentCount(Long postId) {
-        return (int) commentRepository.countByPostId(postId);
+        return (int) commentRepository.countByPostIdIncludingReplies(postId);
     }
 
     public Comment addComment(Long postId, Long userId, String content) {
@@ -129,5 +129,15 @@ public class PostService {
         if (!comment.getUserId().equals(currentUserId)) return false;
         commentRepository.deleteCommentById(commentId);
         return true;
+    }
+
+    public void toggleBookmark(Long postId, Long userId) {
+        photoPostRepository.findById(postId).ifPresent(post -> post.toggleBookmark(userId));
+    }
+
+    public int getBookmarkCount(Long postId) {
+        return photoPostRepository.findById(postId)
+                .map(PhotoPost::getBookmarkCount)
+                .orElse(0);
     }
 }

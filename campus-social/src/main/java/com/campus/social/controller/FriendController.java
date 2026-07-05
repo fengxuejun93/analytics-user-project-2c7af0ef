@@ -4,6 +4,7 @@ import com.campus.social.service.FriendService;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @RequestMapping("/friend")
@@ -21,16 +22,22 @@ public class FriendController {
     }
 
     @PostMapping("/request/{toUserId}")
-    public String sendRequest(@PathVariable Long toUserId, HttpSession session) {
+    public String sendRequest(@PathVariable Long toUserId, HttpSession session,
+                              RedirectAttributes redirectAttributes) {
         Long currentUserId = getCurrentUserId(session);
         friendService.sendFriendRequest(currentUserId, toUserId);
+        redirectAttributes.addFlashAttribute("toastMsg", "好友申请已发送");
+        redirectAttributes.addFlashAttribute("toastType", "success");
         return "redirect:/user/" + toUserId;
     }
 
     @PostMapping("/accept/{relationId}")
     public String acceptRequest(@PathVariable Long relationId,
-                                @RequestParam(required = false) String redirect) {
+                                @RequestParam(required = false) String redirect,
+                                RedirectAttributes redirectAttributes) {
         friendService.acceptFriendRequest(relationId);
+        redirectAttributes.addFlashAttribute("toastMsg", "已通过好友申请");
+        redirectAttributes.addFlashAttribute("toastType", "success");
         if (redirect != null && !redirect.isEmpty()) {
             return "redirect:" + redirect;
         }
@@ -39,8 +46,11 @@ public class FriendController {
 
     @PostMapping("/reject/{relationId}")
     public String rejectRequest(@PathVariable Long relationId,
-                                @RequestParam(required = false) String redirect) {
+                                @RequestParam(required = false) String redirect,
+                                RedirectAttributes redirectAttributes) {
         friendService.rejectFriendRequest(relationId);
+        redirectAttributes.addFlashAttribute("toastMsg", "已拒绝好友申请");
+        redirectAttributes.addFlashAttribute("toastType", "success");
         if (redirect != null && !redirect.isEmpty()) {
             return "redirect:" + redirect;
         }

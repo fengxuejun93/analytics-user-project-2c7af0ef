@@ -53,7 +53,17 @@ public class FriendService {
 
     public void sendFriendRequest(Long fromUserId, Long toUserId) {
         if (fromUserId.equals(toUserId)) return;
-        if (friendRelationRepository.findBetweenUsers(fromUserId, toUserId).isPresent()) return;
+        var existing = friendRelationRepository.findBetweenUsers(fromUserId, toUserId);
+        if (existing.isPresent()) {
+            // 被拒绝后可重新申请：把 REJECTED 改回 PENDING
+            if (existing.get().getStatus() == FriendStatus.REJECTED) {
+                existing.get().setStatus(FriendStatus.PENDING);
+                existing.get().setCreatedAt(java.time.LocalDateTime.now());
+                friendRelationRepository.save(existing.get());
+            }
+            // 已有 PENDING 或 ACCEPTED 记录则不重复创建
+            return;
+        }
         friendRelationRepository.save(new FriendRelation(null, fromUserId, toUserId,
                 FriendStatus.PENDING, java.time.LocalDateTime.now()));
     }

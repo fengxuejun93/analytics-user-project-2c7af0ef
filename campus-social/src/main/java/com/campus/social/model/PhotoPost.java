@@ -13,6 +13,7 @@ public class PhotoPost {
     private int likeCount;
     private LocalDateTime createdAt;
     private List<Long> likedByUsers = new ArrayList<>();
+    private List<Long> bookmarkedByUsers = new ArrayList<>();
     private boolean pinned;
     private boolean edited;
     private LocalDateTime lastEditedAt;
@@ -65,6 +66,23 @@ public class PhotoPost {
         } else {
             likedByUsers.add(userId);
             likeCount++;
+        }
+    }
+
+    public List<Long> getBookmarkedByUsers() { return bookmarkedByUsers; }
+    public void setBookmarkedByUsers(List<Long> bookmarkedByUsers) { this.bookmarkedByUsers = bookmarkedByUsers; }
+
+    public int getBookmarkCount() { return bookmarkedByUsers.size(); }
+
+    public boolean isBookmarkedBy(Long userId) {
+        return bookmarkedByUsers.contains(userId);
+    }
+
+    public void toggleBookmark(Long userId) {
+        if (bookmarkedByUsers.contains(userId)) {
+            bookmarkedByUsers.remove(userId);
+        } else {
+            bookmarkedByUsers.add(userId);
         }
     }
 }

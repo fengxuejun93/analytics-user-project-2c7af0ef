@@ -49,6 +49,14 @@ public class CommentRepository {
                 .count();
     }
 
+    /** 统计评论+回复总数 */
+    public long countByPostIdIncludingReplies(Long postId) {
+        return comments.values().stream()
+                .filter(c -> c.getPostId().equals(postId))
+                .mapToLong(c -> 1 + c.getReplies().size())
+                .sum();
+    }
+
     public void deleteCommentById(Long id) {
         comments.remove(id);
     }

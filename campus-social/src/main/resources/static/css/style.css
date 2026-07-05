@@ -270,6 +270,11 @@ a:hover { text-decoration: underline; }
     color: #fff;
     border-color: var(--blue);
 }
+.btn-action.bookmarked {
+    background: var(--orange);
+    color: #fff;
+    border-color: var(--orange);
+}
 
 /* ===== 详情页 ===== */
 .back-link {

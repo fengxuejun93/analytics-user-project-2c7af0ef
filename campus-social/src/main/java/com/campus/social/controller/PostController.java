@@ -36,7 +36,8 @@ public class PostController {
     @GetMapping("/{id}")
     public String detail(@PathVariable Long id, Model model, HttpSession session,
                          @ModelAttribute("toastMsg") String toastMsg,
-                         @ModelAttribute("toastType") String toastType) {
+                         @ModelAttribute("toastType") String toastType,
+                         RedirectAttributes redirectAttributes) {
         Long currentUserId = getCurrentUserId(session);
         PhotoPost post = postService.findById(id);
         if (post == null) {
@@ -46,6 +47,8 @@ public class PostController {
         }
 
         if (!postService.isPostVisible(post, currentUserId)) {
+            redirectAttributes.addFlashAttribute("toastMsg", "该动态对当前身份不可见");
+            redirectAttributes.addFlashAttribute("toastType", "error");
             return "redirect:/";
         }
 
@@ -111,6 +114,20 @@ public class PostController {
     public String like(@PathVariable Long id, HttpSession session) {
         Long currentUserId = getCurrentUserId(session);
         postService.toggleLike(id, currentUserId);
+        return "redirect:/post/" + id;
+    }
+
+    @PostMapping("/{id}/bookmark")
+    public String bookmark(@PathVariable Long id, HttpSession session,
+                           RedirectAttributes redirectAttributes) {
+        Long currentUserId = getCurrentUserId(session);
+        postService.toggleBookmark(id, currentUserId);
+        PhotoPost post = postService.findById(id);
+        if (post != null) {
+            String msg = post.isBookmarkedBy(currentUserId) ? "已收藏" : "已取消收藏";
+            redirectAttributes.addFlashAttribute("toastMsg", msg);
+            redirectAttributes.addFlashAttribute("toastType", "success");
+        }
         return "redirect:/post/" + id;
     }
 

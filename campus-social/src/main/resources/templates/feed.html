@@ -67,18 +67,22 @@
                     <div class="card-title">切换查看身份</div>
                     <form method="post" action="/switch-user" class="switch-form">
                         <select name="userId" class="select-input" onchange="this.form.submit()">
-                            <option th:each="u : ${allUsers}" th:value="${u.id}" th:text="${u.realName}"
+                            <option th:each="u : ${allUsers}" th:value="${u.id}"
+                                    th:text="${u.realName + ' (' + u.school + ')'}"
                                     th:selected="${u.id == currentUser.id}"></option>
                         </select>
                     </form>
-                    <p class="hint-text">切换后可体验不同身份的可见性效果</p>
+                    <p class="hint-text">当前身份：<strong th:text="${currentUser.realName}"></strong>，切换后动态可见范围实时变化</p>
                 </div>
 
                 <!-- 待处理好友申请 -->
                 <div class="card" th:if="${pendingRequestCount > 0}">
-                    <div class="card-title">待处理好友申请</div>
+                    <div class="card-title">待处理好友申请 (<span th:text="${pendingRequestCount}"></span>)</div>
                     <div th:each="req : ${pendingRequests}" class="request-item">
-                        <span th:text="${userMap.get(req.userId).realName}"></span>
+                        <a th:href="@{'/user/' + ${req.userId}}" class="request-user">
+                            <img class="avatar-sm" th:src="${userMap.get(req.userId).avatar}" th:alt="${userMap.get(req.userId).realName}">
+                            <span th:text="${userMap.get(req.userId).realName}"></span>
+                        </a>
                         <div class="request-actions">
                             <form method="post" th:action="@{'/friend/accept/' + ${req.id}}" style="display:inline">
                                 <input type="hidden" name="redirect" value="/">
@@ -95,9 +99,6 @@
 
             <!-- 中间动态流 -->
             <section class="feed-main">
-                <div class="card py-entry-card">
-                    <a href="http://localhost:5000/" target="_blank" class="py-entry-link">Python增强视图 &#8599; — 收藏、评论筛选、批量删除、编辑历史</a>
-                </div>
                 <!-- 置顶动态区 -->
                 <div th:if="${!pinnedPosts.isEmpty()}" class="pinned-section">
                     <div class="pinned-header">置顶动态</div>
@@ -126,6 +127,7 @@
                             <span class="post-time" th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
                             <div class="post-actions">
                                 <span class="action-item"><span th:text="${post.likeCount}"></span> 赞</span>
+                                <span class="action-item"><span th:text="${bookmarkCountMap.get(post.id)}"></span> 收藏</span>
                                 <span class="action-item"><span th:text="${commentCountMap.get(post.id)}"></span> 评论</span>
                             </div>
                         </div>
@@ -156,12 +158,13 @@
                         <span th:if="${post.edited}" class="edited-hint-sm">已编辑</span>
                         <div class="post-actions">
                             <span class="action-item"><span th:text="${post.likeCount}"></span> 赞</span>
+                            <span class="action-item"><span th:text="${bookmarkCountMap.get(post.id)}"></span> 收藏</span>
                             <span class="action-item"><span th:text="${commentCountMap.get(post.id)}"></span> 评论</span>
                         </div>
                     </div>
                 </div>
 
-                <div th:if="${posts.isEmpty()}" class="card empty-card">
+                <div th:if="${posts.isEmpty() and pinnedPosts.isEmpty()}" class="card empty-card">
                     <div class="empty-icon">&#128240;</div>
                     <p>暂无可见动态，试试切换身份或发一条吧</p>
                 </div>

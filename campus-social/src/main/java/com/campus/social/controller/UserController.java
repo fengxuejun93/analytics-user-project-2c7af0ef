@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.HashMap;
 import java.util.List;
@@ -33,7 +34,9 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    public String profile(@PathVariable Long id, Model model, HttpSession session) {
+    public String profile(@PathVariable Long id, Model model, HttpSession session,
+                          @ModelAttribute("toastMsg") String toastMsg,
+                          @ModelAttribute("toastType") String toastType) {
         Long currentUserId = getCurrentUserId(session);
         User profileUser = userService.getById(id);
         if (profileUser == null) return "redirect:/";
@@ -46,12 +49,14 @@ public class UserController {
         boolean isFriend = friendService.areFriends(currentUserId, id);
 
         String friendStatus = "none";
+        Long pendingRelationId = null;
         if (isSelf) {
             friendStatus = "self";
         } else if (isFriend) {
             friendStatus = "friend";
         } else if (relation != null) {
             if (relation.getStatus() == FriendRelation.FriendStatus.PENDING) {
+                pendingRelationId = relation.getId();
                 if (relation.getUserId().equals(currentUserId)) {
                     friendStatus = "sent";
                 } else {
@@ -68,8 +73,10 @@ public class UserController {
         }
 
         Map<Long, Integer> commentCountMap = new HashMap<>();
+        Map<Long, Integer> bookmarkCountMap = new HashMap<>();
         for (PhotoPost post : userPosts) {
             commentCountMap.put(post.getId(), postService.getCommentCount(post.getId()));
+            bookmarkCountMap.put(post.getId(), post.getBookmarkCount());
         }
 
         model.addAttribute("profileUser", profileUser);
@@ -77,13 +84,17 @@ public class UserController {
         model.addAttribute("friends", friends);
         model.addAttribute("friendStatus", friendStatus);
         model.addAttribute("relation", relation);
+        model.addAttribute("pendingRelationId", pendingRelationId);
         model.addAttribute("currentUser", userService.getById(currentUserId));
         model.addAttribute("userMap", userMap);
         model.addAttribute("commentCountMap", commentCountMap);
+        model.addAttribute("bookmarkCountMap", bookmarkCountMap);
         model.addAttribute("friendCount", friendService.getFriendCount(currentUserId));
         model.addAttribute("pendingRequestCount", friendService.getPendingRequestCount(currentUserId));
         model.addAttribute("visiblePostCount", postService.getVisiblePostCount(currentUserId));
         model.addAttribute("photoPostCount", postService.getPhotoPostCount());
+        model.addAttribute("toastMsg", toastMsg);
+        model.addAttribute("toastType", toastType);
         return "profile";
     }
 }

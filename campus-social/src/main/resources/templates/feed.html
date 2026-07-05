@@ -22,6 +22,12 @@
         </div>
     </nav>
 
+    <!-- Toast 通知 -->
+    <div th:if="${toastMsg != null and !toastMsg.isEmpty()}" class="toast"
+         th:class="${toastType == 'success'} ? 'toast toast-success show' : 'toast toast-error show'">
+        <span th:text="${toastMsg}"></span>
+    </div>
+
     <main class="container">
         <div class="feed-layout">
             <!-- 左侧统计栏 -->
@@ -89,6 +95,41 @@
 
             <!-- 中间动态流 -->
             <section class="feed-main">
+                <!-- 置顶动态区 -->
+                <div th:if="${!pinnedPosts.isEmpty()}" class="pinned-section">
+                    <div class="pinned-header">置顶动态</div>
+                    <div th:each="post : ${pinnedPosts}" class="card post-card pinned-card">
+                        <div class="post-header">
+                            <a th:href="@{'/user/' + ${post.userId}}" class="post-user">
+                                <img class="avatar" th:src="${userMap.get(post.userId).avatar}" th:alt="${userMap.get(post.userId).realName}">
+                                <div class="post-user-info">
+                                    <span class="post-name" th:text="${userMap.get(post.userId).realName}"></span>
+                                    <span class="post-school" th:text="${userMap.get(post.userId).school + ' ' + userMap.get(post.userId).className}"></span>
+                                </div>
+                            </a>
+                            <div class="post-meta-tags">
+                                <span class="pin-badge">置顶</span>
+                                <span class="visibility-tag" th:class="'visibility-tag vis-' + ${post.visibility.name()}"
+                                      th:text="${post.visibility.label}"></span>
+                            </div>
+                        </div>
+                        <a th:href="@{'/post/' + ${post.id}}" class="post-content-link">
+                            <p class="post-content" th:text="${post.content}"></p>
+                            <div class="post-image-wrap" th:if="${post.imageUrl}">
+                                <img class="post-image" th:src="${post.imageUrl}" alt="动态照片">
+                            </div>
+                        </a>
+                        <div class="post-footer">
+                            <span class="post-time" th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
+                            <div class="post-actions">
+                                <span class="action-item"><span th:text="${post.likeCount}"></span> 赞</span>
+                                <span class="action-item"><span th:text="${commentCountMap.get(post.id)}"></span> 评论</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 普通动态 -->
                 <div th:each="post : ${posts}" class="card post-card">
                     <div class="post-header">
                         <a th:href="@{'/user/' + ${post.userId}}" class="post-user">
@@ -109,19 +150,17 @@
                     </a>
                     <div class="post-footer">
                         <span class="post-time" th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
+                        <span th:if="${post.edited}" class="edited-hint-sm">已编辑</span>
                         <div class="post-actions">
-                            <span class="action-item">
-                                <span th:text="${post.likeCount}"></span> 赞
-                            </span>
-                            <span class="action-item">
-                                <span th:text="${commentCountMap.get(post.id)}"></span> 评论
-                            </span>
+                            <span class="action-item"><span th:text="${post.likeCount}"></span> 赞</span>
+                            <span class="action-item"><span th:text="${commentCountMap.get(post.id)}"></span> 评论</span>
                         </div>
                     </div>
                 </div>
 
                 <div th:if="${posts.isEmpty()}" class="card empty-card">
-                    <p>暂无可见动态</p>
+                    <div class="empty-icon">&#128240;</div>
+                    <p>暂无可见动态，试试切换身份或发一条吧</p>
                 </div>
             </section>
         </div>
@@ -130,5 +169,12 @@
     <footer class="site-footer">
         <p>校内网社交原型 - 本地模拟数据演示</p>
     </footer>
+
+    <script>
+        setTimeout(function() {
+            var toast = document.querySelector('.toast.show');
+            if (toast) toast.classList.remove('show');
+        }, 3000);
+    </script>
 </body>
 </html>

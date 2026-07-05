@@ -13,6 +13,9 @@ public class PhotoPost {
     private int likeCount;
     private LocalDateTime createdAt;
     private List<Long> likedByUsers = new ArrayList<>();
+    private boolean pinned;
+    private boolean edited;
+    private LocalDateTime lastEditedAt;
 
     public PhotoPost() {}
 
@@ -43,6 +46,13 @@ public class PhotoPost {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public List<Long> getLikedByUsers() { return likedByUsers; }
     public void setLikedByUsers(List<Long> likedByUsers) { this.likedByUsers = likedByUsers; }
+
+    public boolean isPinned() { return pinned; }
+    public void setPinned(boolean pinned) { this.pinned = pinned; }
+    public boolean isEdited() { return edited; }
+    public void setEdited(boolean edited) { this.edited = edited; }
+    public LocalDateTime getLastEditedAt() { return lastEditedAt; }
+    public void setLastEditedAt(LocalDateTime lastEditedAt) { this.lastEditedAt = lastEditedAt; }
 
     public boolean isLikedBy(Long userId) {
         return likedByUsers.contains(userId);

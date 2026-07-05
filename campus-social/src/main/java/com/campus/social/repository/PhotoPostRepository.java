@@ -44,4 +44,15 @@ public class PhotoPostRepository {
                 .filter(p -> p.getUserId().equals(userId))
                 .count();
     }
+
+    public void deleteById(Long id) {
+        posts.remove(id);
+    }
+
+    public List<PhotoPost> findByPinnedTrue() {
+        return posts.values().stream()
+                .filter(PhotoPost::isPinned)
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .collect(Collectors.toList());
+    }
 }

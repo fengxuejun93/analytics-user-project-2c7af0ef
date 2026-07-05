@@ -48,4 +48,12 @@ public class CommentRepository {
                 .filter(c -> c.getPostId().equals(postId))
                 .count();
     }
+
+    public void deleteCommentById(Long id) {
+        comments.remove(id);
+    }
+
+    public void deleteByPostId(Long postId) {
+        comments.entrySet().removeIf(e -> e.getValue().getPostId().equals(postId));
+    }
 }

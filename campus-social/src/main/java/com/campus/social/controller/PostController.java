@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.HashMap;
 import java.util.List;
@@ -33,10 +34,16 @@ public class PostController {
     }
 
     @GetMapping("/{id}")
-    public String detail(@PathVariable Long id, Model model, HttpSession session) {
+    public String detail(@PathVariable Long id, Model model, HttpSession session,
+                         @ModelAttribute("toastMsg") String toastMsg,
+                         @ModelAttribute("toastType") String toastType) {
         Long currentUserId = getCurrentUserId(session);
         PhotoPost post = postService.findById(id);
-        if (post == null) return "redirect:/";
+        if (post == null) {
+            model.addAttribute("toastMsg", "该动态不存在或已被删除");
+            model.addAttribute("toastType", "error");
+            return "redirect:/";
+        }
 
         if (!postService.isPostVisible(post, currentUserId)) {
             return "redirect:/";
@@ -50,11 +57,17 @@ public class PostController {
             userMap.put(u.getId(), u);
         }
 
+        boolean isOwner = post.getUserId().equals(currentUserId);
+
         model.addAttribute("post", post);
         model.addAttribute("author", author);
         model.addAttribute("comments", comments);
         model.addAttribute("userMap", userMap);
         model.addAttribute("currentUser", userService.getById(currentUserId));
+        model.addAttribute("isOwner", isOwner);
+        model.addAttribute("visibilities", Visibility.values());
+        model.addAttribute("toastMsg", toastMsg);
+        model.addAttribute("toastType", toastType);
         return "detail";
     }
 
@@ -75,9 +88,22 @@ public class PostController {
     public String publish(@RequestParam String content,
                           @RequestParam String imageUrl,
                           @RequestParam Visibility visibility,
-                          HttpSession session) {
+                          HttpSession session,
+                          RedirectAttributes redirectAttributes) {
         Long currentUserId = getCurrentUserId(session);
-        postService.createPost(currentUserId, content, imageUrl, visibility);
+        if (content == null || content.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("toastMsg", "内容不能为空");
+            redirectAttributes.addFlashAttribute("toastType", "error");
+            return "redirect:/post/publish";
+        }
+        if (content.length() > 500) {
+            redirectAttributes.addFlashAttribute("toastMsg", "内容不能超过500字");
+            redirectAttributes.addFlashAttribute("toastType", "error");
+            return "redirect:/post/publish";
+        }
+        postService.createPost(currentUserId, content.trim(), imageUrl, visibility);
+        redirectAttributes.addFlashAttribute("toastMsg", "发布成功");
+        redirectAttributes.addFlashAttribute("toastType", "success");
         return "redirect:/";
     }
 
@@ -91,9 +117,17 @@ public class PostController {
     @PostMapping("/{id}/comment")
     public String comment(@PathVariable Long id,
                           @RequestParam String content,
-                          HttpSession session) {
+                          HttpSession session,
+                          RedirectAttributes redirectAttributes) {
         Long currentUserId = getCurrentUserId(session);
-        postService.addComment(id, currentUserId, content);
+        if (content == null || content.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("toastMsg", "评论内容不能为空");
+            redirectAttributes.addFlashAttribute("toastType", "error");
+            return "redirect:/post/" + id;
+        }
+        postService.addComment(id, currentUserId, content.trim());
+        redirectAttributes.addFlashAttribute("toastMsg", "评论成功");
+        redirectAttributes.addFlashAttribute("toastType", "success");
         return "redirect:/post/" + id;
     }
 
@@ -101,9 +135,86 @@ public class PostController {
     public String reply(@PathVariable Long commentId,
                         @RequestParam String content,
                         @RequestParam Long postId,
-                        HttpSession session) {
+                        HttpSession session,
+                        RedirectAttributes redirectAttributes) {
         Long currentUserId = getCurrentUserId(session);
-        postService.addReply(commentId, currentUserId, content);
+        if (content == null || content.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("toastMsg", "回复内容不能为空");
+            redirectAttributes.addFlashAttribute("toastType", "error");
+            return "redirect:/post/" + postId;
+        }
+        postService.addReply(commentId, currentUserId, content.trim());
+        redirectAttributes.addFlashAttribute("toastMsg", "回复成功");
+        redirectAttributes.addFlashAttribute("toastType", "success");
+        return "redirect:/post/" + postId;
+    }
+
+    @PostMapping("/{id}/edit")
+    public String edit(@PathVariable Long id,
+                       @RequestParam String content,
+                       @RequestParam Visibility visibility,
+                       HttpSession session,
+                       RedirectAttributes redirectAttributes) {
+        Long currentUserId = getCurrentUserId(session);
+        boolean ok = postService.updatePost(id, currentUserId, content, visibility);
+        if (ok) {
+            redirectAttributes.addFlashAttribute("toastMsg", "编辑成功");
+            redirectAttributes.addFlashAttribute("toastType", "success");
+        } else {
+            redirectAttributes.addFlashAttribute("toastMsg", "编辑失败：内容不能为空或超过500字，或无权操作");
+            redirectAttributes.addFlashAttribute("toastType", "error");
+        }
+        return "redirect:/post/" + id;
+    }
+
+    @PostMapping("/{id}/delete")
+    public String delete(@PathVariable Long id,
+                         HttpSession session,
+                         RedirectAttributes redirectAttributes) {
+        Long currentUserId = getCurrentUserId(session);
+        boolean ok = postService.deletePost(id, currentUserId);
+        if (ok) {
+            redirectAttributes.addFlashAttribute("toastMsg", "动态已删除");
+            redirectAttributes.addFlashAttribute("toastType", "success");
+        } else {
+            redirectAttributes.addFlashAttribute("toastMsg", "删除失败：无权操作");
+            redirectAttributes.addFlashAttribute("toastType", "error");
+        }
+        return "redirect:/";
+    }
+
+    @PostMapping("/{id}/pin")
+    public String pin(@PathVariable Long id,
+                      HttpSession session,
+                      RedirectAttributes redirectAttributes) {
+        Long currentUserId = getCurrentUserId(session);
+        boolean ok = postService.togglePin(id, currentUserId);
+        PhotoPost post = postService.findById(id);
+        if (ok && post != null) {
+            String msg = post.isPinned() ? "已置顶" : "已取消置顶";
+            redirectAttributes.addFlashAttribute("toastMsg", msg);
+            redirectAttributes.addFlashAttribute("toastType", "success");
+        } else {
+            redirectAttributes.addFlashAttribute("toastMsg", "操作失败：无权操作");
+            redirectAttributes.addFlashAttribute("toastType", "error");
+        }
+        return "redirect:/post/" + id;
+    }
+
+    @PostMapping("/comment/{commentId}/delete")
+    public String deleteComment(@PathVariable Long commentId,
+                                @RequestParam Long postId,
+                                HttpSession session,
+                                RedirectAttributes redirectAttributes) {
+        Long currentUserId = getCurrentUserId(session);
+        boolean ok = postService.deleteComment(commentId, currentUserId);
+        if (ok) {
+            redirectAttributes.addFlashAttribute("toastMsg", "评论已删除");
+            redirectAttributes.addFlashAttribute("toastType", "success");
+        } else {
+            redirectAttributes.addFlashAttribute("toastMsg", "删除失败：无权操作");
+            redirectAttributes.addFlashAttribute("toastType", "error");
+        }
         return "redirect:/post/" + postId;
     }
 }

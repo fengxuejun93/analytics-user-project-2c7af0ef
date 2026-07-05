@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.HashMap;
 import java.util.List;
@@ -36,11 +37,14 @@ public class HomeController {
     }
 
     @GetMapping("/")
-    public String feed(Model model, HttpSession session) {
+    public String feed(Model model, HttpSession session,
+                       @ModelAttribute("toastMsg") String toastMsg,
+                       @ModelAttribute("toastType") String toastType) {
         Long currentUserId = getCurrentUserId(session);
         User currentUser = userService.getById(currentUserId);
 
         List<PhotoPost> posts = postService.getVisiblePosts(currentUserId);
+        List<PhotoPost> pinnedPosts = postService.getPinnedPosts(currentUserId);
         List<User> allUsers = userService.findAll();
 
         Map<Long, User> userMap = new HashMap<>();
@@ -55,6 +59,7 @@ public class HomeController {
 
         model.addAttribute("currentUser", currentUser);
         model.addAttribute("posts", posts);
+        model.addAttribute("pinnedPosts", pinnedPosts);
         model.addAttribute("userMap", userMap);
         model.addAttribute("commentCountMap", commentCountMap);
         model.addAttribute("allUsers", allUsers);
@@ -63,6 +68,8 @@ public class HomeController {
         model.addAttribute("pendingRequests", friendService.getPendingRequestsReceived(currentUserId));
         model.addAttribute("visiblePostCount", postService.getVisiblePostCount(currentUserId));
         model.addAttribute("photoPostCount", postService.getPhotoPostCount());
+        model.addAttribute("toastMsg", toastMsg);
+        model.addAttribute("toastType", toastType);
 
         return "feed";
     }

@@ -87,4 +87,47 @@ public class PostService {
         Reply reply = new Reply(null, commentId, userId, content, LocalDateTime.now());
         return commentRepository.saveReply(reply);
     }
+
+    public boolean updatePost(Long postId, Long currentUserId, String content, Visibility visibility) {
+        PhotoPost post = findById(postId);
+        if (post == null || !post.getUserId().equals(currentUserId)) return false;
+        if (content == null || content.trim().isEmpty()) return false;
+        if (content.length() > 500) return false;
+        post.setContent(content.trim());
+        post.setVisibility(visibility);
+        post.setEdited(true);
+        post.setLastEditedAt(LocalDateTime.now());
+        photoPostRepository.save(post);
+        return true;
+    }
+
+    public boolean deletePost(Long postId, Long currentUserId) {
+        PhotoPost post = findById(postId);
+        if (post == null || !post.getUserId().equals(currentUserId)) return false;
+        commentRepository.deleteByPostId(postId);
+        photoPostRepository.deleteById(postId);
+        return true;
+    }
+
+    public boolean togglePin(Long postId, Long currentUserId) {
+        PhotoPost post = findById(postId);
+        if (post == null || !post.getUserId().equals(currentUserId)) return false;
+        post.setPinned(!post.isPinned());
+        photoPostRepository.save(post);
+        return true;
+    }
+
+    public List<PhotoPost> getPinnedPosts(Long currentUserId) {
+        return photoPostRepository.findByPinnedTrue().stream()
+                .filter(post -> isPostVisible(post, currentUserId))
+                .collect(Collectors.toList());
+    }
+
+    public boolean deleteComment(Long commentId, Long currentUserId) {
+        Comment comment = commentRepository.findCommentById(commentId).orElse(null);
+        if (comment == null) return false;
+        if (!comment.getUserId().equals(currentUserId)) return false;
+        commentRepository.deleteCommentById(commentId);
+        return true;
+    }
 }

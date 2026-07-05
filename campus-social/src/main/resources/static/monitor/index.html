@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理中心 - 校内网</title>
+    <link rel="stylesheet" href="css/monitor.css">
+</head>
+<body>
+<div id="app">
+    <!-- 顶部导航 -->
+    <nav class="mon-nav">
+        <a href="/" class="mon-nav-logo">校内网</a>
+        <div class="mon-nav-tabs">
+            <a href="#" :class="{ active: currentView === 'dashboard' }"
+               @click.prevent="switchView('dashboard')">过程看板</a>
+            <a href="#" :class="{ active: currentView === 'alerts' }"
+               @click.prevent="switchView('alerts')">节点告警</a>
+            <a href="#" :class="{ active: currentView === 'logs' }"
+               @click.prevent="switchView('logs')">日志审计</a>
+        </div>
+        <a href="/" class="mon-nav-back">&larr; 返回首页</a>
+    </nav>
+
+    <!-- Toast -->
+    <div class="mon-toast" :class="[toast.show ? 'show' : '', toast.type === 'error' ? 'mon-toast-error' : 'mon-toast-success']">
+        {{ toast.msg }}
+    </div>
+
+    <div class="mon-container">
+
+        <!-- ====== 看板视图 ====== -->
+        <div v-if="currentView === 'dashboard'">
+            <h2 class="mon-section-title">全过程看板</h2>
+
+            <div class="stat-grid">
+                <div class="stat-box">
+                    <span class="stat-val">{{ dashboard.totalUsers || 0 }}</span>
+                    <span class="stat-lbl">用户总数</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-val">{{ dashboard.totalPosts || 0 }}</span>
+                    <span class="stat-lbl">动态总数</span>
+                </div>
+                <div class="stat-box stat-orange">
+                    <span class="stat-val">{{ dashboard.pendingAlerts || 0 }}</span>
+                    <span class="stat-lbl">待处理告警</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-val">{{ dashboard.dispatchedAlerts || 0 }}</span>
+                    <span class="stat-lbl">已派发告警</span>
+                </div>
+                <div class="stat-box stat-green">
+                    <span class="stat-val">{{ dashboard.resolvedAlerts || 0 }}</span>
+                    <span class="stat-lbl">已关闭告警</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-val">{{ dashboard.totalLogs || 0 }}</span>
+                    <span class="stat-lbl">审计记录</span>
+                </div>
+            </div>
+
+            <!-- 告警类型分布 -->
+            <div class="mon-card" style="margin-top:16px">
+                <div class="mon-card-title">告警类型分布</div>
+                <div class="stat-grid">
+                    <div class="stat-box" v-for="(count, type) in dashboard.alertsByType" :key="type">
+                        <span class="stat-val">{{ count }}</span>
+                        <span class="stat-lbl">{{ type === 'FRIEND_REQUEST' ? '好友申请' : type === 'POST_COMMENT' ? '动态评论' : type === 'COMMENT_REPLY' ? '评论回复' : '系统通知' }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 最近告警 -->
+            <div class="mon-card">
+                <div class="mon-card-title">最近告警</div>
+                <div v-if="recentAlerts.length === 0" class="mon-empty">
+                    <div class="mon-empty-icon">&#128276;</div>
+                    暂无告警
+                </div>
+                <table v-else class="mon-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th><th>类型</th><th>内容</th><th>来源</th><th>目标</th><th>状态</th><th>时间</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="a in recentAlerts" :key="a.id">
+                            <td>#{{ a.id }}</td>
+                            <td><span :class="typeBadgeClass(a.type)">{{ a.typeLabel }}</span></td>
+                            <td>{{ a.content }}</td>
+                            <td>{{ a.sourceUserName }}</td>
+                            <td>{{ a.targetUserName }}</td>
+                            <td><span :class="statusBadgeClass(a.status)">{{ a.statusLabel }}</span></td>
+                            <td>{{ fmtTime(a.createdAt) }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ====== 告警视图 ====== -->
+        <div v-if="currentView === 'alerts'">
+            <h2 class="mon-section-title">节点告警</h2>
+
+            <div class="filter-bar">
+                <label>状态：</label>
+                <select v-model="alertFilter">
+                    <option value="">全部</option>
+                    <option value="PENDING">待处理</option>
+                    <option value="DISPATCHED">已派发</option>
+                    <option value="RESOLVED">已关闭</option>
+                </select>
+                <label>类型：</label>
+                <select v-model="alertTypeFilter">
+                    <option value="">全部</option>
+                    <option value="FRIEND_REQUEST">好友申请</option>
+                    <option value="POST_COMMENT">动态评论</option>
+                    <option value="COMMENT_REPLY">评论回复</option>
+                    <option value="SYSTEM">系统通知</option>
+                </select>
+                <span style="color:var(--mon-text2);font-size:12px">共 {{ alerts.length }} 条</span>
+            </div>
+
+            <div v-if="alerts.length === 0 && !loading" class="mon-card mon-empty">
+                <div class="mon-empty-icon">&#128276;</div>
+                暂无匹配告警
+            </div>
+
+            <div class="mon-card" v-for="a in alerts" :key="a.id" style="margin-bottom:12px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                    <div>
+                        <span :class="typeBadgeClass(a.type)" style="margin-right:6px">{{ a.typeLabel }}</span>
+                        <span :class="statusBadgeClass(a.status)">{{ a.statusLabel }}</span>
+                        <span style="color:var(--mon-text2);font-size:12px;margin-left:8px">#{{ a.id }}</span>
+                    </div>
+                    <div style="display:flex;gap:6px">
+                        <button v-if="a.status === 'PENDING'" class="mon-btn mon-btn-primary mon-btn-sm"
+                                @click="openDispatch(a.id)">派发</button>
+                        <button v-if="a.status !== 'RESOLVED'" class="mon-btn mon-btn-success mon-btn-sm"
+                                @click="openResolve(a.id)">关闭</button>
+                    </div>
+                </div>
+                <div class="detail-row"><span class="detail-label">内容</span><span class="detail-value">{{ a.content }}</span></div>
+                <div class="detail-row"><span class="detail-label">来源</span><span class="detail-value">{{ a.sourceUserName || '-' }}</span></div>
+                <div class="detail-row"><span class="detail-label">目标</span><span class="detail-value">{{ a.targetUserName || '-' }}</span></div>
+                <div class="detail-row"><span class="detail-label">责任人</span><span class="detail-value">{{ a.assigneeName || '未指派' }}</span></div>
+                <div class="detail-row"><span class="detail-label">关闭说明</span><span class="detail-value">{{ a.resolveNote || '-' }}</span></div>
+                <div class="detail-row"><span class="detail-label">创建</span><span class="detail-value">{{ fmtTime(a.createdAt) }}</span></div>
+                <div v-if="a.dispatchedAt" class="detail-row"><span class="detail-label">派发</span><span class="detail-value">{{ fmtTime(a.dispatchedAt) }}</span></div>
+                <div v-if="a.resolvedAt" class="detail-row"><span class="detail-label">关闭</span><span class="detail-value">{{ fmtTime(a.resolvedAt) }}</span></div>
+            </div>
+        </div>
+
+        <!-- ====== 审计日志视图 ====== -->
+        <div v-if="currentView === 'logs'">
+            <h2 class="mon-section-title">日志审计</h2>
+
+            <div class="filter-bar">
+                <label>用户：</label>
+                <select v-model="logUserFilter">
+                    <option value="">全部</option>
+                    <option v-for="u in users" :key="u.id" :value="u.id">{{ u.realName }}</option>
+                </select>
+                <label>操作：</label>
+                <select v-model="logActionFilter">
+                    <option value="">全部</option>
+                    <option value="CREATE_POST">发布动态</option>
+                    <option value="LIKE_POST">点赞</option>
+                    <option value="UNLIKE_POST">取消赞</option>
+                    <option value="COMMENT">评论</option>
+                    <option value="REPLY">回复</option>
+                    <option value="SEND_REQUEST">发送申请</option>
+                    <option value="ACCEPT_REQUEST">通过申请</option>
+                    <option value="REJECT_REQUEST">拒绝申请</option>
+                    <option value="DISPATCH_ALERT">派发告警</option>
+                    <option value="RESOLVE_ALERT">关闭告警</option>
+                </select>
+                <span style="color:var(--mon-text2);font-size:12px">共 {{ logs.length }} 条</span>
+            </div>
+
+            <div v-if="logs.length === 0 && !loading" class="mon-card mon-empty">
+                <div class="mon-empty-icon">&#128203;</div>
+                暂无匹配记录
+            </div>
+
+            <div class="mon-card" v-else>
+                <table class="mon-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th><th>时间</th><th>用户</th><th>操作</th><th>目标类型</th><th>目标ID</th><th>详情</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="l in logs" :key="l.id">
+                            <td>#{{ l.id }}</td>
+                            <td>{{ fmtTime(l.createdAt) }}</td>
+                            <td>{{ l.userName }}</td>
+                            <td><span class="type-badge type-SYSTEM">{{ l.action }}</span></td>
+                            <td>{{ l.targetType }}</td>
+                            <td>#{{ l.targetId }}</td>
+                            <td>{{ l.detail }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div><!-- mon-container -->
+
+    <!-- 派发弹窗 -->
+    <div v-if="dispatchModal.show" class="mon-modal-mask" @click.self="dispatchModal.show = false">
+        <div class="mon-modal">
+            <h3>派发告警 #{{ dispatchModal.alertId }}</h3>
+            <p>选择派发对象：</p>
+            <select v-model="dispatchAssignee" style="width:100%;padding:8px;border:1px solid var(--mon-border);border-radius:4px;font-size:13px;margin-bottom:8px">
+                <option value="">-- 请选择 --</option>
+                <option v-for="u in users" :key="u.id" :value="u.id">{{ u.realName }}</option>
+            </select>
+            <div v-if="dispatchError" class="mon-error">{{ dispatchError }}</div>
+            <div class="mon-modal-actions">
+                <button class="mon-btn" @click="dispatchModal.show = false">取消</button>
+                <button class="mon-btn mon-btn-primary" @click="confirmDispatch">确认派发</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 关闭弹窗 -->
+    <div v-if="resolveModal.show" class="mon-modal-mask" @click.self="resolveModal.show = false">
+        <div class="mon-modal">
+            <h3>关闭告警 #{{ resolveModal.alertId }}</h3>
+            <p>请填写关闭说明（复盘记录）：</p>
+            <textarea v-model="resolveModal.note" rows="3" placeholder="说明处置结果..."></textarea>
+            <div v-if="resolveModal.error" class="mon-error">{{ resolveModal.error }}</div>
+            <div class="mon-modal-actions">
+                <button class="mon-btn" @click="resolveModal.show = false">取消</button>
+                <button class="mon-btn mon-btn-success" @click="confirmResolve">确认关闭</button>
+            </div>
+        </div>
+    </div>
+
+</div><!-- #app -->
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

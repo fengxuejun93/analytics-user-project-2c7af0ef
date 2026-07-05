@@ -2,6 +2,8 @@ package com.campus.social.data;
 
 import com.campus.social.model.*;
 import com.campus.social.model.FriendRelation.FriendStatus;
+import com.campus.social.model.SystemAlert.AlertStatus;
+import com.campus.social.model.SystemAlert.AlertType;
 import com.campus.social.repository.*;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
@@ -16,15 +18,21 @@ public class MockDataInitializer implements CommandLineRunner {
     private final FriendRelationRepository friendRelationRepository;
     private final PhotoPostRepository photoPostRepository;
     private final CommentRepository commentRepository;
+    private final SystemAlertRepository systemAlertRepository;
+    private final AuditLogRepository auditLogRepository;
 
     public MockDataInitializer(UserRepository userRepository,
                                FriendRelationRepository friendRelationRepository,
                                PhotoPostRepository photoPostRepository,
-                               CommentRepository commentRepository) {
+                               CommentRepository commentRepository,
+                               SystemAlertRepository systemAlertRepository,
+                               AuditLogRepository auditLogRepository) {
         this.userRepository = userRepository;
         this.friendRelationRepository = friendRelationRepository;
         this.photoPostRepository = photoPostRepository;
         this.commentRepository = commentRepository;
+        this.systemAlertRepository = systemAlertRepository;
+        this.auditLogRepository = auditLogRepository;
     }
 
     @Override
@@ -33,6 +41,8 @@ public class MockDataInitializer implements CommandLineRunner {
         initFriendRelations();
         initPosts();
         initComments();
+        initAlerts();
+        initAuditLogs();
     }
 
     private void initUsers() {
@@ -136,5 +146,66 @@ public class MockDataInitializer implements CommandLineRunner {
         Comment c5 = new Comment(5L, 6L, 2L, "运动健将！",
                 LocalDateTime.of(2024, 6, 10, 18, 0));
         commentRepository.saveComment(c5);
+    }
+
+    private void initAlerts() {
+        // 张伟向李明的好友申请 → 告警给李明
+        systemAlertRepository.save(new SystemAlert(1L, AlertType.FRIEND_REQUEST,
+                "张伟向你发送了好友申请", 3L, 1L, 6L, AlertStatus.PENDING,
+                LocalDateTime.of(2024, 6, 10, 8, 45)));
+        // 刘娜向陈杰的好友申请 → 告警给陈杰
+        systemAlertRepository.save(new SystemAlert(2L, AlertType.FRIEND_REQUEST,
+                "刘娜向你发送了好友申请", 4L, 5L, 7L, AlertStatus.PENDING,
+                LocalDateTime.of(2024, 6, 12, 13, 20)));
+        // 李明评论王芳动态 → 告警给王芳（已派发给王芳自己处理）
+        SystemAlert a3 = new SystemAlert(3L, AlertType.POST_COMMENT,
+                "李明评论了你的动态", 1L, 2L, 1L, AlertStatus.DISPATCHED,
+                LocalDateTime.of(2024, 6, 15, 10, 0));
+        a3.setAssigneeId(2L);
+        a3.setDispatchedAt(LocalDateTime.of(2024, 6, 15, 10, 5));
+        systemAlertRepository.save(a3);
+        // 陈杰评论王芳动态 → 告警给王芳（已关闭）
+        SystemAlert a4 = new SystemAlert(4L, AlertType.POST_COMMENT,
+                "陈杰评论了你的动态", 5L, 2L, 1L, AlertStatus.RESOLVED,
+                LocalDateTime.of(2024, 6, 15, 11, 30));
+        a4.setAssigneeId(2L);
+        a4.setDispatchedAt(LocalDateTime.of(2024, 6, 15, 11, 35));
+        a4.setResolveNote("已知悉");
+        a4.setResolvedAt(LocalDateTime.of(2024, 6, 15, 12, 0));
+        systemAlertRepository.save(a4);
+        // 李明评论陈杰动态 → 告警给陈杰
+        systemAlertRepository.save(new SystemAlert(5L, AlertType.POST_COMMENT,
+                "李明评论了你的动态", 1L, 5L, 6L, AlertStatus.PENDING,
+                LocalDateTime.of(2024, 6, 10, 17, 0)));
+        // 王芳回复李明评论 → 告警给李明（已派发）
+        SystemAlert a6 = new SystemAlert(6L, AlertType.COMMENT_REPLY,
+                "王芳回复了你的评论", 2L, 1L, 1L, AlertStatus.DISPATCHED,
+                LocalDateTime.of(2024, 6, 15, 10, 15));
+        a6.setAssigneeId(1L);
+        a6.setDispatchedAt(LocalDateTime.of(2024, 6, 15, 10, 20));
+        systemAlertRepository.save(a6);
+    }
+
+    private void initAuditLogs() {
+        auditLogRepository.save(new AuditLog(1L, 2L, "CREATE_POST", "POST", 1L,
+                "发布动态: 今天校园的樱花开了", LocalDateTime.of(2024, 6, 15, 9, 30)));
+        auditLogRepository.save(new AuditLog(2L, 1L, "CREATE_POST", "POST", 2L,
+                "发布动态: 和同学们一起做项目", LocalDateTime.of(2024, 6, 14, 15, 20)));
+        auditLogRepository.save(new AuditLog(3L, 3L, "SEND_REQUEST", "FRIEND_RELATION", 6L,
+                "发送好友申请", LocalDateTime.of(2024, 6, 10, 8, 45)));
+        auditLogRepository.save(new AuditLog(4L, 4L, "SEND_REQUEST", "FRIEND_RELATION", 7L,
+                "发送好友申请", LocalDateTime.of(2024, 6, 12, 13, 20)));
+        auditLogRepository.save(new AuditLog(5L, 1L, "COMMENT", "POST", 1L,
+                "评论动态#1: 好漂亮！", LocalDateTime.of(2024, 6, 15, 10, 0)));
+        auditLogRepository.save(new AuditLog(6L, 2L, "REPLY", "COMMENT", 1L,
+                "回复评论#1: 好呀", LocalDateTime.of(2024, 6, 15, 10, 15)));
+        auditLogRepository.save(new AuditLog(7L, 5L, "COMMENT", "POST", 1L,
+                "评论动态#1: 我也想去！", LocalDateTime.of(2024, 6, 15, 11, 30)));
+        auditLogRepository.save(new AuditLog(8L, 2L, "DISPATCH_ALERT", "ALERT", 3L,
+                "派发告警 #3", LocalDateTime.of(2024, 6, 15, 10, 5)));
+        auditLogRepository.save(new AuditLog(9L, 2L, "RESOLVE_ALERT", "ALERT", 4L,
+                "关闭告警 #4：已知悉", LocalDateTime.of(2024, 6, 15, 12, 0)));
+        auditLogRepository.save(new AuditLog(10L, 1L, "LIKE_POST", "POST", 1L,
+                "LIKE_POST", LocalDateTime.of(2024, 6, 15, 12, 30)));
     }
 }

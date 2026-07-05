@@ -2,6 +2,7 @@ package com.campus.social.service;
 
 import com.campus.social.model.FriendRelation;
 import com.campus.social.model.FriendRelation.FriendStatus;
+import com.campus.social.model.SystemAlert;
 import com.campus.social.model.User;
 import com.campus.social.repository.FriendRelationRepository;
 import com.campus.social.repository.UserRepository;
@@ -16,11 +17,14 @@ public class FriendService {
 
     private final FriendRelationRepository friendRelationRepository;
     private final UserRepository userRepository;
+    private final MonitorService monitorService;
 
     public FriendService(FriendRelationRepository friendRelationRepository,
-                         UserRepository userRepository) {
+                         UserRepository userRepository,
+                         MonitorService monitorService) {
         this.friendRelationRepository = friendRelationRepository;
         this.userRepository = userRepository;
+        this.monitorService = monitorService;
     }
 
     public boolean areFriends(Long userId1, Long userId2) {
@@ -62,18 +66,28 @@ public class FriendService {
                 existing.get().setStatus(FriendStatus.PENDING);
                 existing.get().setCreatedAt(java.time.LocalDateTime.now());
                 friendRelationRepository.save(existing.get());
+                monitorService.recordAction(fromUserId, "SEND_REQUEST", "FRIEND_RELATION",
+                        existing.get().getId(), "重新发送好友申请(已翻转)");
+                monitorService.createAlert(SystemAlert.AlertType.FRIEND_REQUEST,
+                        "用户重新向你发送了好友申请", fromUserId, toUserId, existing.get().getId());
             }
             // 已有 PENDING 或 ACCEPTED 记录则不重复创建
             return;
         }
-        friendRelationRepository.save(new FriendRelation(null, fromUserId, toUserId,
+        FriendRelation rel = friendRelationRepository.save(new FriendRelation(null, fromUserId, toUserId,
                 FriendStatus.PENDING, java.time.LocalDateTime.now()));
+        monitorService.recordAction(fromUserId, "SEND_REQUEST", "FRIEND_RELATION",
+                rel.getId(), "发送好友申请");
+        monitorService.createAlert(SystemAlert.AlertType.FRIEND_REQUEST,
+                "用户向你发送了好友申请", fromUserId, toUserId, rel.getId());
     }
 
     public void acceptFriendRequest(Long relationId) {
         friendRelationRepository.findById(relationId).ifPresent(r -> {
             r.setStatus(FriendStatus.ACCEPTED);
             friendRelationRepository.save(r);
+            monitorService.recordAction(r.getFriendId(), "ACCEPT_REQUEST", "FRIEND_RELATION",
+                    relationId, "通过好友申请");
         });
     }
 
@@ -81,6 +95,8 @@ public class FriendService {
         friendRelationRepository.findById(relationId).ifPresent(r -> {
             r.setStatus(FriendStatus.REJECTED);
             friendRelationRepository.save(r);
+            monitorService.recordAction(r.getFriendId(), "REJECT_REQUEST", "FRIEND_RELATION",
+                    relationId, "拒绝好友申请");
         });
     }
 

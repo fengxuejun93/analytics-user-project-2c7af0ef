@@ -687,3 +687,27 @@ a:hover { text-decoration: underline; }
     font-size: 36px;
     margin-bottom: 8px;
 }
+
+/* ===== Python 增强视图入口 ===== */
+.py-link {
+    display: inline-block;
+    margin-left: 12px;
+    font-size: 13px;
+    color: #7c4dff;
+    background: #f3e5f5;
+    padding: 3px 10px;
+    border-radius: 12px;
+    vertical-align: middle;
+}
+.py-link:hover { text-decoration: none; background: #e1bee7; }
+.py-entry-card {
+    padding: 10px 16px;
+    background: linear-gradient(135deg, #f3e5f5, #ede7f6);
+    border-left: 3px solid #7c4dff;
+}
+.py-entry-link {
+    color: #7c4dff;
+    font-weight: 600;
+    font-size: 14px;
+}
+.py-entry-link:hover { text-decoration: none; color: #651fff; }

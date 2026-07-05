@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>动态详情 - 校内网 (Python增强)</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/py-style.css') }}">
+</head>
+<body>
+    <nav class="top-nav">
+        <div class="nav-inner">
+            <a href="/" class="nav-logo">校内网 <span class="nav-tag">Py</span></a>
+            <div class="nav-links">
+                <a href="/">动态广场</a>
+                <a href="http://localhost:{{ java_port }}/" target="_blank">Java端首页</a>
+            </div>
+            <div class="nav-user" id="navUser">
+                <img class="nav-avatar" src="{{ user.avatar }}" alt="{{ user.real_name }}">
+                <span>{{ user.real_name }}</span>
+            </div>
+        </div>
+    </nav>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="toast toast-{{ messages[-1][0] }} show" id="toastBox">
+        {{ messages[-1][1] }}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <main class="container">
+        <div class="detail-layout">
+            <!-- 左侧：增强统计 + 收藏 -->
+            <aside class="sidebar">
+                <div class="card">
+                    <div class="sidebar-user">
+                        <img class="avatar-lg" src="{{ user.avatar }}" alt="{{ user.real_name }}">
+                        <h3>{{ user.real_name }}</h3>
+                        <p>{{ user.school }}</p>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-num">{{ friend_count }}</span>
+                            <span class="stat-label">好友</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-num">{{ pending_count }}</span>
+                            <span class="stat-label">待处理</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-num">{{ bookmarked_count }}</span>
+                            <span class="stat-label">已收藏</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-num">{{ visible_count }}</span>
+                            <span class="stat-label">可见动态</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 切换身份 -->
+                <div class="card">
+                    <div class="card-title">切换查看身份</div>
+                    <form method="post" action="/switch-user" class="switch-form">
+                        <select name="user_id" class="select-input" onchange="this.form.submit()">
+                            {% for u in all_users %}
+                            <option value="{{ u.id }}" {% if u.id == user.id %}selected{% endif %}>{{ u.real_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                </div>
+
+                <!-- 编辑历史 -->
+                {% if edit_history %}
+                <div class="card">
+                    <div class="card-title">编辑历史</div>
+                    {% for rec in edit_history %}
+                    <div class="history-item">
+                        <span class="history-time">{{ rec.edited_at.strftime('%m-%d %H:%M') }}</span>
+                        <span class="history-diff">
+                            {% if rec.old_content != rec.new_content %}修改内容{% endif %}
+                            {% if rec.old_visibility != rec.new_visibility %} · 可见性: {{ rec.old_visibility.value }} → {{ rec.new_visibility.value }}{% endif %}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </aside>
+
+            <!-- 主内容 -->
+            <div class="detail-main">
+                <a href="/" class="back-link">&larr; 返回动态广场</a>
+
+                <!-- 查看模式 -->
+                <div id="viewMode">
+                    <div class="card detail-card">
+                        <div class="post-header">
+                            <a href="#" class="post-user">
+                                <img class="avatar" src="{{ author.avatar }}" alt="{{ author.real_name }}">
+                                <div class="post-user-info">
+                                    <span class="post-name">{{ author.real_name }}</span>
+                                    <span class="post-school">{{ author.school }} {{ author.class_name }}</span>
+                                </div>
+                            </a>
+                            <div class="post-meta-tags">
+                                {% if post.pinned %}<span class="pin-badge">置顶</span>{% endif %}
+                                <span class="visibility-tag vis-{{ post.visibility.name }}"> {{ post.visibility.value }}</span>
+                            </div>
+                        </div>
+
+                        <p class="post-content">{{ post.content }}</p>
+                        {% if post.image_url %}
+                        <div class="detail-image-wrap">
+                            <img class="detail-image" src="{{ post.image_url }}" alt="动态大图">
+                        </div>
+                        {% endif %}
+
+                        <div class="post-time-row">
+                            <span class="post-time">{{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                            {% if post.edited %}
+                            <span class="edited-hint">已编辑 {{ post.last_edited_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                            {% endif %}
+                        </div>
+
+                        <!-- 互动栏 -->
+                        <div class="detail-interactions">
+                            <div class="detail-actions">
+                                <form method="post" action="/post/{{ post.id }}/like" style="display:inline">
+                                    <button type="submit" class="btn-action {% if post.is_liked_by(user.id) %}liked{% endif %}">
+                                        {{ post.like_count }} 赞
+                                    </button>
+                                </form>
+                                <form method="post" action="/post/{{ post.id }}/bookmark" style="display:inline">
+                                    <button type="submit" class="btn-action {% if post.is_bookmarked_by(user.id) %}bookmarked{% endif %}">
+                                        {{ post.bookmark_count }} 收藏
+                                    </button>
+                                </form>
+                                <span class="action-item">{{ comments|length }} 评论</span>
+                            </div>
+                            {% if is_owner %}
+                            <div class="owner-actions">
+                                <button type="button" class="btn-action" onclick="showEditMode()">编辑</button>
+                                <form method="post" action="/post/{{ post.id }}/pin" style="display:inline">
+                                    <button type="submit" class="btn-action">{{ '取消置顶' if post.pinned else '置顶' }}</button>
+                                </form>
+                                <button type="button" class="btn-action btn-action-danger" onclick="showDeleteModal()">删除</button>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 编辑模式 -->
+                <div id="editMode" style="display:none">
+                    <div class="card detail-card">
+                        <h3 class="section-title">编辑动态</h3>
+                        <form method="post" action="/post/{{ post.id }}/edit" class="edit-form">
+                            <div class="form-group">
+                                <label>文字内容 <span class="char-hint">(最多500字)</span></label>
+                                <textarea name="content" class="textarea-input" rows="4" maxlength="500" required
+                                          oninput="document.getElementById('charCount').textContent=this.value.length">{{ post.content }}</textarea>
+                                <div class="char-counter"><span id="charCount">{{ post.content|length }}</span>/500</div>
+                            </div>
+                            <div class="form-group">
+                                <label>可见性</label>
+                                <div class="visibility-options">
+                                    {% for vis in visibilities %}
+                                    <div class="visibility-option">
+                                        <input type="radio" name="visibility" value="{{ vis.name }}" id="edit-vis-{{ vis.name }}"
+                                               {% if vis == post.visibility %}checked{% endif %}>
+                                        <label for="edit-vis-{{ vis.name }}" class="vis-label">
+                                            <span class="vis-icon vis-icon-{{ vis.name }}"></span>
+                                            <span>{{ vis.value }}</span>
+                                        </label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="edit-actions">
+                                <button type="submit" class="btn btn-primary">保存修改</button>
+                                <button type="button" class="btn" onclick="showViewMode()">取消</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 删除弹窗 -->
+                <div id="deleteModal" class="modal-overlay" style="display:none">
+                    <div class="modal-box">
+                        <h3>确认删除</h3>
+                        <p>删除后无法恢复，确定要删除这条动态吗？</p>
+                        <div class="modal-actions">
+                            <form method="post" action="/post/{{ post.id }}/delete" style="display:inline">
+                                <button type="submit" class="btn btn-danger">确认删除</button>
+                            </form>
+                            <button type="button" class="btn" onclick="hideDeleteModal()">取消</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 评论列表 -->
+                <div class="card comments-card">
+                    <div class="comments-header">
+                        <h3 class="section-title">评论 ({{ comments|length }})</h3>
+                        <div class="comment-filter-bar">
+                            <a href="/post/{{ post.id }}?filter=all"
+                               class="filter-btn {% if comment_filter == 'all' %}active{% endif %}">全部</a>
+                            <a href="/post/{{ post.id }}?filter=mine"
+                               class="filter-btn {% if comment_filter == 'mine' %}active{% endif %}">我的</a>
+                            <a href="/post/{{ post.id }}?filter=with_replies"
+                               class="filter-btn {% if comment_filter == 'with_replies' %}active{% endif %}">有回复</a>
+                        </div>
+                    </div>
+
+                    {% if not comments %}
+                    <div class="empty-hint">
+                        <div class="empty-icon">&#128172;</div>
+                        暂无评论，来说两句吧
+                    </div>
+                    {% endif %}
+
+                    <!-- 批量删除表单 -->
+                    <form id="batchForm" method="post" action="/comments/batch-delete">
+                        <input type="hidden" name="post_id" value="{{ post.id }}">
+                        <input type="hidden" name="comment_ids" id="batchIds" value="">
+
+                        {% if comments %}
+                        <div class="batch-bar">
+                            <label class="batch-select-all">
+                                <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)">
+                                <span>全选我的评论</span>
+                            </label>
+                            <button type="submit" class="btn-sm btn-danger" id="batchDeleteBtn" disabled
+                                    onclick="return confirmBatch()">批量删除</button>
+                        </div>
+                        {% endif %}
+
+                        {% for comment in comments %}
+                        <div class="comment-item" data-mine="{% if comment.user_id == user.id %}1{% else %}0{% endif %}">
+                            <div class="comment-main">
+                                {% if comment.user_id == user.id %}
+                                <input type="checkbox" class="comment-check" value="{{ comment.id }}"
+                                       onchange="updateBatchBar()">
+                                {% else %}
+                                <span class="comment-check-spacer"></span>
+                                {% endif %}
+                                <a href="#" class="comment-user">
+                                    <img class="avatar-sm" src="{{ users_map[comment.user_id].avatar }}" alt="">
+                                    <span class="comment-name">{{ users_map[comment.user_id].real_name }}</span>
+                                </a>
+                                <span class="comment-text">{{ comment.content }}</span>
+                                <span class="comment-time">{{ comment.created_at.strftime('%m-%d %H:%M') }}</span>
+                                {% if comment.user_id == user.id %}
+                                <form method="post" action="/comment/{{ comment.id }}/delete" style="display:inline">
+                                    <input type="hidden" name="post_id" value="{{ post.id }}">
+                                    <button type="submit" class="btn-delete-comment" title="删除评论">&times;</button>
+                                </form>
+                                {% endif %}
+                            </div>
+
+                            <!-- 楼中楼 -->
+                            {% if comment.replies %}
+                            <div class="replies">
+                                {% for reply in comment.replies %}
+                                <div class="reply-item">
+                                    <a href="#" class="comment-user">
+                                        <img class="avatar-xs" src="{{ users_map[reply.user_id].avatar }}" alt="">
+                                        <span class="reply-name">{{ users_map[reply.user_id].real_name }}</span>
+                                    </a>
+                                    <span class="reply-text">{{ reply.content }}</span>
+                                    <span class="comment-time">{{ reply.created_at.strftime('%m-%d %H:%M') }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+
+                            <!-- 回复表单 -->
+                            <div class="reply-form-wrap">
+                                <form method="post" action="/comment/{{ comment.id }}/reply" class="reply-form">
+                                    <input type="hidden" name="post_id" value="{{ post.id }}">
+                                    <input type="text" name="content" placeholder="回复..." class="input-sm" required>
+                                    <button type="submit" class="btn-sm btn-primary">回复</button>
+                                </form>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </form>
+
+                    <!-- 发评论 -->
+                    <div class="comment-form-section">
+                        <h4>发表评论</h4>
+                        <form method="post" action="/post/{{ post.id }}/comment" class="comment-form">
+                            <textarea name="content" placeholder="说点什么吧..." class="textarea-input" rows="3" required></textarea>
+                            <button type="submit" class="btn btn-primary">发表评论</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <p>校内网社交原型 - Python Flask 增强详情视图</p>
+    </footer>
+
+    <script>
+        function showEditMode() {
+            document.getElementById('viewMode').style.display = 'none';
+            document.getElementById('editMode').style.display = 'block';
+        }
+        function showViewMode() {
+            document.getElementById('viewMode').style.display = 'block';
+            document.getElementById('editMode').style.display = 'none';
+        }
+        function showDeleteModal() {
+            document.getElementById('deleteModal').style.display = 'flex';
+        }
+        function hideDeleteModal() {
+            document.getElementById('deleteModal').style.display = 'none';
+        }
+
+        // Toast 自动消失
+        setTimeout(function() {
+            var t = document.getElementById('toastBox');
+            if (t) t.classList.remove('show');
+        }, 3000);
+
+        // 批量选择
+        function toggleSelectAll(checkbox) {
+            var checks = document.querySelectorAll('.comment-check');
+            checks.forEach(function(c) { c.checked = checkbox.checked; });
+            updateBatchBar();
+        }
+        function updateBatchBar() {
+            var checks = document.querySelectorAll('.comment-check:checked');
+            var btn = document.getElementById('batchDeleteBtn');
+            var ids = [];
+            checks.forEach(function(c) { ids.push(c.value); });
+            document.getElementById('batchIds').value = ids.join(',');
+            btn.disabled = ids.length === 0;
+        }
+        function confirmBatch() {
+            var ids = document.getElementById('batchIds').value;
+            if (!ids) return false;
+            return confirm('确定删除选中的 ' + ids.split(',').length + ' 条评论？');
+        }
+    </script>
+</body>
+</html>

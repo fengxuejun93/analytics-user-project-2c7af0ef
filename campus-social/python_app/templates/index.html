@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>动态广场 - 校内网 (Python增强)</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/py-style.css') }}">
+</head>
+<body>
+    <nav class="top-nav">
+        <div class="nav-inner">
+            <a href="/" class="nav-logo">校内网 <span class="nav-tag">Py</span></a>
+            <div class="nav-links">
+                <a href="/" class="active">动态广场</a>
+                <a href="http://localhost:{{ java_port }}/" target="_blank">Java端首页</a>
+            </div>
+            <div class="nav-user">
+                <img class="nav-avatar" src="{{ user.avatar }}" alt="{{ user.real_name }}">
+                <span>{{ user.real_name }}</span>
+            </div>
+        </div>
+    </nav>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="toast toast-{{ messages[-1][0] }} show" id="toastBox">
+        {{ messages[-1][1] }}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <main class="container">
+        <div class="feed-layout">
+            <aside class="sidebar">
+                <div class="card">
+                    <div class="sidebar-user">
+                        <img class="avatar-lg" src="{{ user.avatar }}" alt="{{ user.real_name }}">
+                        <h3>{{ user.real_name }}</h3>
+                        <p>{{ user.school }}</p>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-num">{{ friend_count }}</span>
+                            <span class="stat-label">好友</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-num">{{ pending_count }}</span>
+                            <span class="stat-label">待处理</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-num">{{ bookmarked_count }}</span>
+                            <span class="stat-label">已收藏</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-num">{{ visible_count }}</span>
+                            <span class="stat-label">可见动态</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">切换查看身份</div>
+                    <form method="post" action="/switch-user" class="switch-form">
+                        <select name="user_id" class="select-input" onchange="this.form.submit()">
+                            {% for u in all_users %}
+                            <option value="{{ u.id }}" {% if u.id == user.id %}selected{% endif %}>{{ u.real_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                </div>
+
+                {% if pending %}
+                <div class="card">
+                    <div class="card-title">待处理好友申请</div>
+                    {% for req in pending %}
+                    <div class="request-item">
+                        <span>{{ users_map[req.user_id].real_name }}</span>
+                        <div class="request-actions">
+                            <form method="post" action="/friend/accept/{{ req.id }}" style="display:inline">
+                                <button type="submit" class="btn-sm btn-primary">通过</button>
+                            </form>
+                            <form method="post" action="/friend/reject/{{ req.id }}" style="display:inline">
+                                <button type="submit" class="btn-sm btn-danger">拒绝</button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </aside>
+
+            <section class="feed-main">
+                {% if pinned %}
+                <div class="pinned-section">
+                    <div class="pinned-header">置顶动态</div>
+                    {% for post in pinned %}
+                    <div class="card post-card pinned-card">
+                        <div class="post-header">
+                            <a href="#" class="post-user">
+                                <img class="avatar" src="{{ users_map[post.user_id].avatar }}" alt="">
+                                <div class="post-user-info">
+                                    <span class="post-name">{{ users_map[post.user_id].real_name }}</span>
+                                    <span class="post-school">{{ users_map[post.user_id].school }} {{ users_map[post.user_id].class_name }}</span>
+                                </div>
+                            </a>
+                            <div class="post-meta-tags">
+                                <span class="pin-badge">置顶</span>
+                                <span class="visibility-tag vis-{{ post.visibility.name }}">{{ post.visibility.value }}</span>
+                            </div>
+                        </div>
+                        <a href="/post/{{ post.id }}" class="post-content-link">
+                            <p class="post-content">{{ post.content }}</p>
+                            {% if post.image_url %}
+                            <div class="post-image-wrap"><img class="post-image" src="{{ post.image_url }}" alt=""></div>
+                            {% endif %}
+                        </a>
+                        <div class="post-footer">
+                            <span class="post-time">{{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                            <div class="post-actions">
+                                <span class="action-item">{{ post.like_count }} 赞</span>
+                                <span class="action-item">{{ post.bookmark_count }} 收藏</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                {% for post in posts %}
+                <div class="card post-card">
+                    <div class="post-header">
+                        <a href="#" class="post-user">
+                            <img class="avatar" src="{{ users_map[post.user_id].avatar }}" alt="">
+                            <div class="post-user-info">
+                                <span class="post-name">{{ users_map[post.user_id].real_name }}</span>
+                                <span class="post-school">{{ users_map[post.user_id].school }} {{ users_map[post.user_id].class_name }}</span>
+                            </div>
+                        </a>
+                        <span class="visibility-tag vis-{{ post.visibility.name }}">{{ post.visibility.value }}</span>
+                    </div>
+                    <a href="/post/{{ post.id }}" class="post-content-link">
+                        <p class="post-content">{{ post.content }}</p>
+                        {% if post.image_url %}
+                        <div class="post-image-wrap"><img class="post-image" src="{{ post.image_url }}" alt=""></div>
+                        {% endif %}
+                    </a>
+                    <div class="post-footer">
+                        <span class="post-time">{{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                        {% if post.edited %}<span class="edited-hint-sm">已编辑</span>{% endif %}
+                        <div class="post-actions">
+                            <span class="action-item">{{ post.like_count }} 赞</span>
+                            <span class="action-item">{{ post.bookmark_count }} 收藏</span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+
+                {% if not posts %}
+                <div class="card empty-card">
+                    <div class="empty-icon">&#128240;</div>
+                    <p>暂无可见动态，试试切换身份</p>
+                </div>
+                {% endif %}
+            </section>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <p>校内网社交原型 - Python Flask 增强视图</p>
+    </footer>
+
+    <script>
+        setTimeout(function() {
+            var t = document.getElementById('toastBox');
+            if (t) t.classList.remove('show');
+        }, 3000);
+    </script>
+</body>
+</html>

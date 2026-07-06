@@ -86,14 +86,26 @@
                             <span th:text="${userMap.get(req.userId).realName}"></span>
                         </a>
                         <div class="request-actions">
-                            <form method="post" th:action="@{'/friend/accept/' + ${req.id}}" style="display:inline">
-                                <input type="hidden" name="redirect" value="/">
-                                <button type="submit" class="btn-sm btn-primary">通过</button>
-                            </form>
-                            <form method="post" th:action="@{'/friend/reject/' + ${req.id}}" style="display:inline">
-                                <input type="hidden" name="redirect" value="/">
-                                <button type="submit" class="btn-sm btn-danger">拒绝</button>
-                            </form>
+                            <button type="button" class="btn-sm btn-primary"
+                                    th:attr="onclick='showFriendConfirm('+${req.id}+',&quot;accept&quot;)'">通过</button>
+                            <button type="button" class="btn-sm btn-danger"
+                                    th:attr="onclick='showFriendConfirm('+${req.id}+',&quot;reject&quot;)'">拒绝</button>
+                        </div>
+                        <div th:id="'friend-confirm-' + ${req.id}" class="confirm-panel" style="display:none;margin-top:8px">
+                            <h4 th:id="'friend-confirm-title-' + ${req.id}"></h4>
+                            <p th:text="'来自 ' + ${userMap.get(req.userId).realName} + ' 的好友申请'"></p>
+                            <div class="confirm-actions">
+                                <form method="post" th:action="@{'/friend/accept/' + ${req.id}}" style="display:inline">
+                                    <input type="hidden" name="redirect" value="/">
+                                    <button type="submit" class="btn btn-primary" style="font-size:12px;padding:4px 14px">确认通过</button>
+                                </form>
+                                <form method="post" th:action="@{'/friend/reject/' + ${req.id}}" style="display:inline">
+                                    <input type="hidden" name="redirect" value="/">
+                                    <button type="submit" class="btn btn-danger" style="font-size:12px;padding:4px 14px">确认拒绝</button>
+                                </form>
+                                <button type="button" class="btn" style="font-size:12px;padding:4px 14px"
+                                        th:attr="onclick='hideFriendConfirm('+${req.id}+')'">取消</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -179,6 +191,19 @@
     </footer>
 
     <script>
+        // 好友申请确认层
+        function showFriendConfirm(reqId, action) {
+            var panel = document.getElementById('friend-confirm-' + reqId);
+            var title = document.getElementById('friend-confirm-title-' + reqId);
+            if (!panel || !title) return;
+            title.textContent = action === 'accept' ? '确认通过好友申请？' : '确认拒绝好友申请？';
+            panel.style.display = 'block';
+        }
+        function hideFriendConfirm(reqId) {
+            var panel = document.getElementById('friend-confirm-' + reqId);
+            if (panel) panel.style.display = 'none';
+        }
+        // Toast 自动消失
         setTimeout(function() {
             var toast = document.querySelector('.toast.show');
             if (toast) toast.classList.remove('show');

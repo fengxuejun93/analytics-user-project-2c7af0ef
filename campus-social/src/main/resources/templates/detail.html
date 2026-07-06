@@ -90,29 +90,26 @@
                             <!-- 主人操作 -->
                             <div th:if="${isOwner}" class="owner-actions">
                                 <a th:href="@{'/post/' + ${post.id} + '/edit'}" class="btn-action">编辑</a>
-                                <form method="post" th:action="@{'/post/' + ${post.id} + '/pin'}" style="display:inline">
-                                    <button type="submit" class="btn-action"
-                                            th:text="${post.pinned} ? '取消置顶' : '置顶'"></button>
-                                </form>
-                                <button type="button" class="btn-action btn-action-danger" onclick="showDeleteModal()">删除</button>
+                                <button type="button" class="btn-action" th:text="${post.pinned} ? '取消置顶' : '置顶'"
+                                        onclick="showConfirm('pin')"></button>
+                                <button type="button" class="btn-action btn-action-danger" onclick="showConfirm('delete')">删除</button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- ====== 删除确认弹窗 ====== -->
-                <div id="deleteModal" class="modal-overlay" style="display:none">
-                    <div class="modal-box">
-                        <h3>确认删除</h3>
-                        <p>删除后无法恢复，确定要删除这条动态吗？</p>
-                        <div class="modal-actions">
-                            <form method="post" th:action="@{'/post/' + ${post.id} + '/delete'}" style="display:inline">
-                                <button type="submit" class="btn btn-danger">确认删除</button>
-                            </form>
-                            <button type="button" class="btn" onclick="hideDeleteModal()">取消</button>
-                        </div>
+                <!-- ====== 页面内确认层 ====== -->
+                <div id="confirmPanel" class="confirm-panel" style="display:none">
+                    <h4 id="confirmTitle"></h4>
+                    <p id="confirmDesc"></p>
+                    <div class="confirm-actions">
+                        <button class="btn btn-danger" id="confirmBtn" onclick="doConfirm()">确认</button>
+                        <button class="btn" onclick="hideConfirm()">取消</button>
                     </div>
                 </div>
+                <!-- 隐藏的提交表单 -->
+                <form id="pinForm" method="post" th:action="@{'/post/' + ${post.id} + '/pin'}" style="display:none"></form>
+                <form id="deleteForm" method="post" th:action="@{'/post/' + ${post.id} + '/delete'}" style="display:none"></form>
 
                 <!-- ====== 评论列表 ====== -->
                 <div class="card comments-card">
@@ -131,11 +128,18 @@
                             </a>
                             <span class="comment-text" th:text="${comment.content}"></span>
                             <span class="comment-time" th:text="${#temporals.format(comment.createdAt, 'MM-dd HH:mm')}"></span>
-                            <form th:if="${comment.userId == currentUser.id}" method="post"
-                                  th:action="@{'/post/comment/' + ${comment.id} + '/delete'}" style="display:inline">
-                                <input type="hidden" name="postId" th:value="${post.id}">
-                                <button type="submit" class="btn-delete-comment" title="删除评论">&times;</button>
-                            </form>
+                            <span th:if="${comment.userId == currentUser.id}">
+                                <button type="button" class="btn-delete-comment" title="删除评论"
+                                        th:attr="onclick='showDelComment('+${comment.id}+')'">&times;</button>
+                            </span>
+                            <span th:id="'del-confirm-' + ${comment.id}" style="display:none" class="confirm-inline">
+                                确定删除该评论？
+                                <form method="post" th:action="@{'/post/comment/' + ${comment.id} + '/delete'}" style="display:inline">
+                                    <input type="hidden" name="postId" th:value="${post.id}">
+                                    <button type="submit" class="btn btn-danger">删除</button>
+                                </form>
+                                <button type="button" class="btn" th:attr="onclick='hideDelComment('+${comment.id}+')'">取消</button>
+                            </span>
                         </div>
 
                         <!-- 楼中楼回复 -->
@@ -178,12 +182,50 @@
     </footer>
 
     <script>
-        function showDeleteModal() {
-            document.getElementById('deleteModal').style.display = 'flex';
+        // ===== 确认层（删除动态/置顶） =====
+        var pendingAction = null;
+        function showConfirm(action) {
+            var panel = document.getElementById('confirmPanel');
+            var title = document.getElementById('confirmTitle');
+            var desc = document.getElementById('confirmDesc');
+            var btn = document.getElementById('confirmBtn');
+            if (action === 'delete') {
+                title.textContent = '确认删除动态';
+                desc.textContent = '删除后无法恢复，评论和点赞也会一起清除。';
+                btn.className = 'btn btn-danger';
+                btn.textContent = '确认删除';
+            } else if (action === 'pin') {
+                var isPinned = /*[[${post.pinned}]]*/ false;
+                title.textContent = isPinned ? '取消置顶' : '确认置顶';
+                desc.textContent = isPinned ? '取消后该动态将不再固定在顶部。' : '置顶后该动态将固定在动态广场顶部。';
+                btn.className = 'btn btn-primary';
+                btn.textContent = '确认';
+            }
+            pendingAction = action;
+            panel.style.display = 'block';
         }
-        function hideDeleteModal() {
-            document.getElementById('deleteModal').style.display = 'none';
+        function hideConfirm() {
+            document.getElementById('confirmPanel').style.display = 'none';
+            pendingAction = null;
         }
+        function doConfirm() {
+            if (pendingAction === 'delete') {
+                document.getElementById('deleteForm').submit();
+            } else if (pendingAction === 'pin') {
+                document.getElementById('pinForm').submit();
+            }
+        }
+
+        // ===== 删除评论确认层 =====
+        function showDelComment(id) {
+            var el = document.getElementById('del-confirm-' + id);
+            if (el) el.style.display = 'inline-flex';
+        }
+        function hideDelComment(id) {
+            var el = document.getElementById('del-confirm-' + id);
+            if (el) el.style.display = 'none';
+        }
+
         // Toast 自动消失
         setTimeout(function() {
             var toast = document.querySelector('.toast.show');

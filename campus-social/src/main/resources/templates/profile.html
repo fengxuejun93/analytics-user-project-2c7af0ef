@@ -55,9 +55,17 @@
                         </div>
                         <!-- 未好友：可以申请 -->
                         <div th:if="${friendStatus == 'none'}">
-                            <form method="post" th:action="@{'/friend/request/' + ${profileUser.id}}">
-                                <button type="submit" class="btn btn-primary btn-block">加为好友</button>
-                            </form>
+                            <button type="button" class="btn btn-primary btn-block" onclick="showProfileConfirm('add')">加为好友</button>
+                            <div id="confirm-add" class="confirm-panel" style="display:none;margin-top:8px">
+                                <h4>确认发送好友申请？</h4>
+                                <p>申请发出后需等待对方通过</p>
+                                <div class="confirm-actions">
+                                    <form method="post" th:action="@{'/friend/request/' + ${profileUser.id}}" style="display:inline">
+                                        <button type="submit" class="btn btn-primary" style="font-size:12px;padding:4px 14px">确认发送</button>
+                                    </form>
+                                    <button type="button" class="btn" style="font-size:12px;padding:4px 14px" onclick="hideProfileConfirm('add')">取消</button>
+                                </div>
+                            </div>
                         </div>
                         <!-- 已发送申请 -->
                         <div th:if="${friendStatus == 'sent'}">
@@ -66,21 +74,47 @@
                         <!-- 对方发来申请：可以通过/拒绝 -->
                         <div th:if="${friendStatus == 'received'}">
                             <p class="pending-badge">对方已发来好友申请</p>
-                            <form method="post" th:action="@{'/friend/accept/' + ${relation.id}}" style="display:inline">
-                                <input type="hidden" name="redirect" th:value="'/user/' + ${profileUser.id}">
-                                <button type="submit" class="btn btn-primary">通过</button>
-                            </form>
-                            <form method="post" th:action="@{'/friend/reject/' + ${relation.id}}" style="display:inline">
-                                <input type="hidden" name="redirect" th:value="'/user/' + ${profileUser.id}">
-                                <button type="submit" class="btn btn-danger">拒绝</button>
-                            </form>
+                            <div style="display:flex;gap:6px;margin-top:4px">
+                                <button type="button" class="btn btn-primary" onclick="showProfileConfirm('accept')">通过</button>
+                                <button type="button" class="btn btn-danger" onclick="showProfileConfirm('reject')">拒绝</button>
+                            </div>
+                            <div id="confirm-accept" class="confirm-panel" style="display:none;margin-top:8px">
+                                <h4>确认通过好友申请？</h4>
+                                <p>通过后双方即为好友关系</p>
+                                <div class="confirm-actions">
+                                    <form method="post" th:action="@{'/friend/accept/' + ${relation.id}}" style="display:inline">
+                                        <input type="hidden" name="redirect" th:value="'/user/' + ${profileUser.id}">
+                                        <button type="submit" class="btn btn-primary" style="font-size:12px;padding:4px 14px">确认通过</button>
+                                    </form>
+                                    <button type="button" class="btn" style="font-size:12px;padding:4px 14px" onclick="hideProfileConfirm('accept')">取消</button>
+                                </div>
+                            </div>
+                            <div id="confirm-reject" class="confirm-panel" style="display:none;margin-top:8px">
+                                <h4>确认拒绝好友申请？</h4>
+                                <p>拒绝后对方可重新向你发送申请</p>
+                                <div class="confirm-actions">
+                                    <form method="post" th:action="@{'/friend/reject/' + ${relation.id}}" style="display:inline">
+                                        <input type="hidden" name="redirect" th:value="'/user/' + ${profileUser.id}">
+                                        <button type="submit" class="btn btn-danger" style="font-size:12px;padding:4px 14px">确认拒绝</button>
+                                    </form>
+                                    <button type="button" class="btn" style="font-size:12px;padding:4px 14px" onclick="hideProfileConfirm('reject')">取消</button>
+                                </div>
+                            </div>
                         </div>
                         <!-- 被拒绝：可重新申请 -->
                         <div th:if="${friendStatus == 'rejected'}">
                             <span class="rejected-badge">之前的申请已被拒绝</span>
-                            <form method="post" th:action="@{'/friend/request/' + ${profileUser.id}}" style="margin-top:8px">
-                                <button type="submit" class="btn btn-primary btn-block">重新申请</button>
-                            </form>
+                            <button type="button" class="btn btn-primary btn-block" style="margin-top:8px" onclick="showProfileConfirm('reapply')">重新申请</button>
+                            <div id="confirm-reapply" class="confirm-panel" style="display:none;margin-top:8px">
+                                <h4>确认重新发送好友申请？</h4>
+                                <p>你将成为新的申请人</p>
+                                <div class="confirm-actions">
+                                    <form method="post" th:action="@{'/friend/request/' + ${profileUser.id}}" style="display:inline">
+                                        <button type="submit" class="btn btn-primary" style="font-size:12px;padding:4px 14px">确认发送</button>
+                                    </form>
+                                    <button type="button" class="btn" style="font-size:12px;padding:4px 14px" onclick="hideProfileConfirm('reapply')">取消</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -167,6 +201,16 @@
     </footer>
 
     <script>
+        // 好友操作确认层
+        function showProfileConfirm(action) {
+            var panel = document.getElementById('confirm-' + action);
+            if (panel) panel.style.display = 'block';
+        }
+        function hideProfileConfirm(action) {
+            var panel = document.getElementById('confirm-' + action);
+            if (panel) panel.style.display = 'none';
+        }
+        // Toast 自动消失
         setTimeout(function() {
             var toast = document.querySelector('.toast.show');
             if (toast) toast.classList.remove('show');
